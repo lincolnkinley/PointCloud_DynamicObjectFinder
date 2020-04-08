@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+
+<launch>
+	<node pkg="voxelizer" type="voxelizer.py" name="voxelizer" output="screen" />
+
+</launch>
