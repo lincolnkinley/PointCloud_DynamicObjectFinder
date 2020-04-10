@@ -23,10 +23,10 @@ def callback(data):
   # Detect blobs.
   keypoints = detector.detect(image)
   print(keypoints)
-  x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
-  y = keypoints[i].pt[1]
-  print(x)
-  print(y)
+  #x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
+  #y = keypoints[i].pt[1]
+  #print(x)
+  #print(y)
   #pub.publish(keypoints)
 
 #contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
