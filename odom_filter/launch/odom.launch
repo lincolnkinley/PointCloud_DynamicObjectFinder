@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+
+<launch>
+	<node pkg="odom_filter" type="odom.py" name="odom_filter" output="screen" />
+
+</launch>
