@@ -6,6 +6,8 @@ import rosbag
 import time
 import numpy as np
 
+from object_tracker import *
+
 from sensor_msgs.msg import Image 
 from std_msgs.msg import Float64, Float64MultiArray
 from cv_bridge import CvBridge
@@ -14,30 +16,46 @@ pub_image=rospy.Publisher('contours', Image, queue_size=5)
 pub_position=rospy.Publisher('contour_location', Float64MultiArray, queue_size=5)
 pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
 
-def position(cont):
-    for c in range(len(cont)):
-        area = cv2.contourArea(cont[c])
-        perimeter = cv2.arcLength(cont[c], False)
-        pixel=cont[c][0][0]
-        x_pixel=abs(pixel[0]-175)*0.1
-        y_pixel=abs((pixel[1]-175))*0.1
-        position=Float64MultiArray()
-        position.data=[x_pixel, y_pixel]
-        pub_position.publish(position)
-        print(position.data)
+OBJ_TRACKER = object_tracker
+PREV_TIME = None
+
+def get_blobs(contours):
+	blobs = []
+	for obj in contours:
+		pos = blob_position(obj)
+		size = blob_size(obj)
+		blobs.append(blobject(pos, size))
+	return blobs
 
 
-def size(cont):
-    for c in range(len(cont)):
-        area = cv2.contourArea(cont[c])
-        perimeter = cv2.arcLength(cont[c], False)
-        pub_size.publish(perimeter)
-        #print(perimeter)
+def blob_position(cont):
+    pixel=cont[0][0]
+    x_pixel=float(pixel[0]-175)*0.1
+    y_pixel=float(pixel[1]-175)*0.1
+    
+    return [x_pixel, y_pixel]
+
+
+def blob_size(cont):
+    area = cv2.contourArea(cont[c])
+    perimeter = cv2.arcLength(cont[c], False)
+    
+    return area
 
 
 def callback(data):
+    global OBJ_TRACKER
+    global PREV_TIME
     bridge = CvBridge()
     image = bridge.imgmsg_to_cv2(data)
+    ros_time = data.header.time
+    if(PREV_TIME == None):
+    	# assume that 0.1 seconds has passed. This is approxamately correct for the VLP-16
+    	PREV_TIME = ros_time - 0.1
+    time_change = PREV_TIME - ros_time
+
+    PREV_TIME = ros_time
+
 
     #Blob Method
     '''
@@ -76,16 +94,10 @@ def callback(data):
     #print(len(contours))
     #print(contours)
 
-    color =(255,255,255)
-
-    cv2.drawContours(image, contours, -1, color, 2) 
-
-    image_message = bridge.cv2_to_imgmsg(image, encoding="passthrough")
-
-    pub_image.publish(image_message)
-
-    position(contours)
-    size(contours)
+    blobs = get_blobs(contours)
+    OBJ_TRACKER.update(blobs)
+	
+    #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
 
 
 def main():

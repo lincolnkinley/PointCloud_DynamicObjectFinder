@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+
 import rospy
 import math
 
@@ -18,7 +19,7 @@ class object_tracker:
 		
 		
 	def update(self, blobs, time_change):
-		cost = np.empty((len(blobs), len(self.dynamic_objects), dtype=np.uint16)
+		cost = np.empty((len(blobs), len(self.dynamic_objects)), dtype=np.uint16)
 		# Cost matrix for solving best solutions. See Asignment Problem and hungarian algorithm
 		for i in values:
 			for j in i:
@@ -46,7 +47,7 @@ class object_tracker:
 		for obj in self.dynamic_objects:
 			if(obj.deletion_flag == True):
 				del(obj)
-			else
+			else:
 				obj.estimate_object()
 		
 		
@@ -58,7 +59,7 @@ class dynamic_object:
 		self.ID = ID
 		self.size = size
 		self.position = position # 1d array [x, y], relative to lidar, NOT IN VOXELS!
-		self.velocity = [0 0] # 1d array [speed (m/s), direction]
+		self.velocity = [0, 0] # 1d array [speed (m/s), direction]
 		self.title = "unknown"
 		self.ready_flag = False # object will not be considered until true, allows time for classification
 		self.deletion_flag = False
@@ -70,7 +71,7 @@ class dynamic_object:
 			self.deletion_flag = True
 	
 	
-	def match(self, blob)
+	def match(self, blob):
 		score = 0.0
 		size_delta = blob.size-self.size
 		x_delta = blob.position[0] - self.position[0]
