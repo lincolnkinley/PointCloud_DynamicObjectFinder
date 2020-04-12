@@ -4,11 +4,13 @@
 import rospy
 import math
 
+import cv2
+
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 
-_LOST_THRESH = 40 # number of loops before an object is considered lost and will be deleted
-_DIFF_THRESH = 20 # threshold for considering an object to be a different object
+_LOST_THRESH = 20 # number of loops before an object is considered lost and will be deleted
+_DIFF_THRESH = 50 # threshold for considering an object to be a different object
 _MIN_SIZE = 1 # Minimus size, lower than this is considered noise and will be deleted
 _MAX_SIZE = 25 # Max size, higher than this means something went wrong and the object should be ignored
 
@@ -24,12 +26,14 @@ class object_tracker:
 		for i in range(len(blobs)):
 			for j in range(len(self.dynamic_objects)):
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
+		rospy.loginfo(str(cost))
 		row_ind, col_ind = linear_sum_assignment(cost)
 		blobs_copy = np.copy(blobs)
 		# copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
 
 		for i in range(len(row_ind)):
 			if(cost[row_ind[i]][col_ind[i]] < _DIFF_THRESH):
+				
 				# If the object is less than the _diff_thresh then we condiser it a different object
 				self.dynamic_objects[col_ind[i]].update(blobs[row_ind[i]], time_change)
 				blobs_copy[row_ind[i]] = None
@@ -37,6 +41,8 @@ class object_tracker:
 		for obj in self.dynamic_objects:
 			if(obj.update_flag == False):
 				obj.estimate(time_change)
+			else:
+				obj.update_flag = False
 				
 		# remove the Nones, remiaining blobs or objects havent been matched
 		#blobs_copy[blobs_copy != np.array(None)]
@@ -80,6 +86,15 @@ class object_tracker:
 			string += "Object: " + str(obj.title) + " | X: " + str(obj.position[0]) + " | Y: " + str(obj.position[1]) + " | Size: " + str(obj.size) + "\n" 
 		return string
 		
+	def tracked_objects(self):
+		objects = []
+		for obj in self.dynamic_objects:
+			if(obj.ready_flag == True):
+				x = int((obj.position[0] + 17.5)*10)
+				y = int((obj.position[1] + 17.5)*10)
+				objects.append([(x, y), obj.title, obj.ID])
+		return objects
+		
 
 
 		
@@ -118,7 +133,7 @@ class dynamic_object:
 		# small slow objects = pedestrian
 		# small fast objects = cyclist
 		# very small or very large objects = noise
-		if(self.size > 10):
+		'''if(self.size > 10):
 			if(self.size > 30):
 				self.title = "Large Noise"
 				self.deletion_flag = True
@@ -139,6 +154,26 @@ class dynamic_object:
 				self.ready_flag = True
 			else:
 				self.title = "Unknown"
+		else:
+			self.title = "Noise"
+			self.deletion_flag = True'''
+			
+		# basic classifier, does not use velocity only size
+		if(self.size > 20.0):
+			self.title = "Large Noise"
+			self.deletion_flag = True
+		elif(self.size > 8.0):
+			if(self.velocity[0] != 0):
+				self.title = "vehicle"
+				self.ready_flag = True
+		elif(self.size >= 2.0):
+			if(self.velocity[0] != 0):
+				self.title = "cyclist"
+				self.ready_flag = True
+		elif(self.size >= 0.0):
+			if(self.velocity[0] != 0):
+				self.title = "Pedestrian"
+				self.ready_flag = True
 		else:
 			self.title = "Noise"
 			self.deletion_flag = True
@@ -166,6 +201,8 @@ class dynamic_object:
 		x = x + speed*math.cos(angle)*time_change
 		y = y + speed*math.sin(angle)*time_change
 		self.position = [x, y]
+		if((abs(x) > 30 ) or (abs(y) > 30)):
+			self.deletion_flag = True
 		self.lost_loops += 1
 		if(self.lost_loops > _LOST_THRESH):
 			self.deletion_flag = True

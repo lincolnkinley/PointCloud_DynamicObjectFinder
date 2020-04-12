@@ -12,6 +12,8 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float64, Float64MultiArray
 from cv_bridge import CvBridge
 
+pub_objects=rospy.Publisher('tracked_objects', Image, queue_size=5)
+
 pub_image=rospy.Publisher('contours', Image, queue_size=5)
 pub_position=rospy.Publisher('contour_location', Float64MultiArray, queue_size=5)
 pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
@@ -98,7 +100,18 @@ def callback(data):
     blobs = get_blobs(contours)
     float_time = time_change.to_sec()
     OBJ_TRACKER.update(blobs, float_time)
-    rospy.loginfo(OBJ_TRACKER.pretty())
+    tracked_obj = OBJ_TRACKER.tracked_objects()
+    
+    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+    
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    for obj in tracked_obj:
+    	#cv2.putText(color, obj[1], obj[0], font, 1, (0, 255, 0), 1, cv2.LINE_AA)
+    	color[obj[0][1]][obj[0][0]] = (0,255,0)
+    cv2.putText(color, "f", (5,100), font, 1, (0, 255, 0), 1, cv2.LINE_AA)
+    image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
+    pub_objects.publish(image_message)
+    #rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
 

@@ -45,6 +45,19 @@ def position_callback(data):
 		rospy.loginfo("Position update error!")
 
 def callback(data):
+	params = cv2.SimpleBlobDetector_Params()
+	params.filterByArea = True
+	params.minArea = 0
+	params.maxArea = 500
+	params.filterByCircularity = False
+	params.filterByColor = False
+	params.filterByConvexity = False
+	params.filterByInertia = False
+	params.minThreshold = 50
+	params.maxThreshold = 255
+	params.thresholdStep = 10
+	detector = cv2.SimpleBlobDetector_create(params)
+	
 	global PREV_IMG
 	global PREV_POSITION
 	global READY
@@ -64,21 +77,35 @@ def callback(data):
 				ring = int(j[2]-_RING_MIN)
 				voxels[x_voxel][y_voxel][ring] = 255
 	
+	
 	#Original order, subtracting the 3d image
 	if READY:
 		
 		y_shift = int((measured_position[0] - PREV_POSITION[0]) * -10)
 		x_shift = int((measured_position[1] - PREV_POSITION[1]) * -10)
-		rospy.loginfo("X: " + str(x_shift) + " | Y: " + str(y_shift))
 		shift = np.float32([[1, 0, x_shift],[0,1,y_shift]])
 		rows, cols, zeasus = voxels.shape
 		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
+		
 		subtracted_image = cv2.subtract(voxels, shifted_prev_img)
 		filtered_image = im_3d_filter(subtracted_image)
-		flat_image = flatten(filtered_image)
-		filtered_flat_image = im_2d_filter(flat_image)
 		
-		image_message = bridge.cv2_to_imgmsg(filtered_flat_image, encoding="passthrough")
+		#kernel = np.ones((3,3),np.float32)/9
+		#filtered_image = cv2.filter2D(filtered_image,-1,kernel)
+		
+		
+		
+		flat_image = flatten(filtered_image)
+		
+		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
+		flat_image = im_2d_filter(flat_image)
+		
+		#keypoints = detector.detect(flat_image)
+		#rospy.loginfo(str(keypoints))
+		
+		#im_with_keypoints = cv2.drawKeypoints(flat_image, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+		
+		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
 		pub.publish(image_message)
 		
@@ -89,6 +116,9 @@ def callback(data):
 		
 	# New order, subtracting 3d filtered image
 	'''filtered_image = im_3d_filter(voxels)
+	kernel = np.ones((3,3),np.float32)/9
+	filtered_image = cv2.filter2D(filtered_image,-1,kernel)
+	flat_image = flatten(filtered_image)
 	
 	
 	if READY:
@@ -98,15 +128,16 @@ def callback(data):
 		rows, cols, zeasus = voxels.shape
 		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
 		
-		subtracted_image = cv2.subtract(filtered_image, shifted_prev_img)
-		flat_image = flatten(subtracted_image)
-		filtered_flat_image = im_2d_filter(flat_image)
+		subtracted_image = cv2.subtract(flat_image, shifted_prev_img)
 		
-		image_message = bridge.cv2_to_imgmsg(filtered_flat_image, encoding="passthrough")
+		#filtered_flat_image = im_2d_filter(subtracted_image)
+		
+		image_message = bridge.cv2_to_imgmsg(subtracted_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
 		pub.publish(image_message)
 		
-	PREV_IMG = filtered_image
+	PREV_IMG = flat_image
+	PREV_POSITION = measured_position
 	READY = True'''
 	
 	
@@ -121,7 +152,7 @@ def flatten(image):
 			
 def im_2d_filter(image):
 	imcopy = image
-	detection_thresh = 245
+	detection_thresh = 250
 	imcopy[imcopy > detection_thresh] = 255
 	imcopy[imcopy <= detection_thresh] = 0
 	imcopycopy = imcopy
@@ -145,7 +176,7 @@ def im_3d_filter(image):
 		pixels.append([raw_pixels[0][i], raw_pixels[1][i], raw_pixels[2][i]])
 		
 	for pixel in pixels:
-		adjacent_pixels = check_nearby_pixels(pixel, image)*36
+		adjacent_pixels = check_nearby_pixels(pixel, image)*38
 		if(adjacent_pixels > 255):
 			adjacent_pixels = 255
 		imcopy[pixel[0]][pixel[1]][pixel[2]] = int(adjacent_pixels)
