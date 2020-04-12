@@ -50,10 +50,28 @@ class object_tracker:
 		for obj in self.dynamic_objects:
 			obj.estimate_object()
 			
+		# This doesn't work
+		#for obj in self.dynamic_objects:
+		#	if(obj.deletion_flag == True):
+		#		del(obj)
+		
+		# This doesn't work either
+		#self.dynamic_objects = filter(lambda f: f.deletion_flag == True, self.dynamic_objects)
+		
+		i = 0
+		length = len(self.dynamic_objects)
+		while(i < length):
+			if(self.dynamic_objects[i].deletion_flag == True):
+				del(self.dynamic_objects[i])
+				length -= 1
+			else:
+				i += 1
+				
+		i = 0
 		for obj in self.dynamic_objects:
 			if(obj.deletion_flag == True):
-				del(obj)
-
+				rospy.loginfo("Failed to Delete! Index = " + str(i))
+			i += 1
 	
 	def pretty(self):
 		string = ""
@@ -102,7 +120,6 @@ class dynamic_object:
 		# very small or very large objects = noise
 		if(self.size > 10):
 			if(self.size > 30):
-				
 				self.title = "Large Noise"
 				self.deletion_flag = True
 			elif(self.velocity[0] > 0.1):
