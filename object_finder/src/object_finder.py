@@ -16,7 +16,7 @@ pub_image=rospy.Publisher('contours', Image, queue_size=5)
 pub_position=rospy.Publisher('contour_location', Float64MultiArray, queue_size=5)
 pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
 
-OBJ_TRACKER = object_tracker
+OBJ_TRACKER = object_tracker()
 PREV_TIME = None
 
 def get_blobs(contours):
@@ -37,8 +37,8 @@ def blob_position(cont):
 
 
 def blob_size(cont):
-    area = cv2.contourArea(cont[c])
-    perimeter = cv2.arcLength(cont[c], False)
+    area = cv2.contourArea(cont)
+    #perimeter = cv2.arcLength(cont, False)
     
     return area
 
@@ -51,7 +51,7 @@ def callback(data):
     ros_time = data.header.stamp
     if(PREV_TIME == None):
     	# assume that 0.1 seconds has passed. This is approxamately correct for the VLP-16
-    	PREV_TIME = ros_time - 0.1
+    	PREV_TIME = ros_time - rospy.Duration.from_sec(0.1)
     time_change = PREV_TIME - ros_time
 
     PREV_TIME = ros_time
@@ -93,9 +93,13 @@ def callback(data):
     contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     #print(len(contours))
     #print(contours)
+    
 
     blobs = get_blobs(contours)
-    OBJ_TRACKER.update(blobs)
+    float_time = time_change.to_sec()
+    OBJ_TRACKER.update(blobs, float_time)
+    rospy.logindo
+    rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
 

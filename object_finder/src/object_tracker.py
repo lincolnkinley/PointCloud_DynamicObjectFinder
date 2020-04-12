@@ -21,35 +21,43 @@ class object_tracker:
 	def update(self, blobs, time_change):
 		cost = np.empty((len(blobs), len(self.dynamic_objects)), dtype=np.uint16)
 		# Cost matrix for solving best solutions. See Asignment Problem and hungarian algorithm
-		for i in values:
-			for j in i:
+		for i in range(len(blobs)):
+			for j in range(len(self.dynamic_objects)):
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
-		row_ind, col_ind = linear_sum_assignment(values)
+		row_ind, col_ind = linear_sum_assignment(cost)
 		blobs_copy = np.copy(blobs)
 		# copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
+
 		for i in range(len(row_ind)):
-			if(cost[col_ind[i]][row_ind[i]] < _DIFF_THRESH):
+			if(cost[row_ind[i]][col_ind[i]] < _DIFF_THRESH):
 				# If the object is less than the _diff_thresh then we condiser it a different object
-				self.dynamic_objects[row_ind[i]].update(blobs[col_ind[i]], time_change)
-				blobs_copy[col_ind[i]] = None
+				self.dynamic_objects[col_ind[i]].update(blobs[row_ind[i]], time_change)
+				blobs_copy[row_ind[i]] = None
 				
-		for obj in dynamic_objects:
+		for obj in self.dynamic_objects:
 			if(obj.update_flag == False):
 				obj.estimate(time_change)
 				
 		# remove the Nones, remiaining blobs or objects havent been matched
-		blobs_copy[blobs_copy != np.array(None)]
-		
+		#blobs_copy[blobs_copy != np.array(None)]
+		#rospy.loginfo(str(blobs_copy != np.array(None)))
+		#rospy.loginfo(str(blobs_copy))
 		for blob in blobs_copy:
-			self.dynamic_objects.append(dynamic_object(self.ID_count, blob.size, blob.position))
-			self.ID_count += 1
+			if(blob != None):
+				self.dynamic_objects.append(dynamic_object(self.ID_count, blob.size, blob.position))
+				self.ID_count += 1
 		
 		for obj in self.dynamic_objects:
 			if(obj.deletion_flag == True):
 				del(obj)
 			else:
 				obj.estimate_object()
-		
+	
+	def pretty(self):
+		string = ""
+		for obj in self.dynamic_objects:
+			string += "Object: " + str(obj.ID) + " | X: " + str(obj.position[0]) + " | Y: " + str(obj.position[1]) + " | Size: " + str(obj.size) + "\n" 
+		return string
 		
 
 
@@ -96,12 +104,12 @@ class dynamic_object:
 	
 	def update(self, blob, time_change):
 		# Call this every callback when the object has been detected
-		x_displacement = blob[0][0] - self.position[0]
-		y_displacement = blob[0][1] - self.position[1]
+		x_displacement = blob.position[0] - self.position[0]
+		y_displacement = blob.position[1] - self.position[1]
 		speed = (((x_displacement)**2+(y_displacement)**2)**0.5)/time_change
 		angle = math.atan2(y_displacement, x_displacement)
 		self.velocity = [speed, angle]
-		self.size = blob[1] # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
+		self.size = blob.size # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
 		self.update_flag = True
 		
 		
