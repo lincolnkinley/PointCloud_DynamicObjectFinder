@@ -17,21 +17,38 @@ from sensor_msgs.msg import Image
 
 from cv_bridge import CvBridge
 
+from geometry_msgs.msg import Pose 
+
 PREV_IMG = None
 READY = False
 
+PREV_POSITION = [0,0]
+CURRENT_POSITION = [0,0]
 
-SEQ = 0
 _SIZE = 350
 _RING = 7
 _RING_MIN = 5 # lowest ring that will be scanned
 _RING_MAX = 8 # highest ring that will
 
+
+
 pub = rospy.Publisher('voxel_image', Image, queue_size=10)
+
+def position_callback(data):
+	global CURRENT_POSITION
+	saved_pos = CURRENT_POSITION
+	try:
+		CURRENT_POSITION[0] = data.position.x
+		CURRENT_POSITION[0] = data.position.y
+	except:
+		CURRENT_POSITION = saved_pos
+		rospy.loginfo("Position update error!")
 
 def callback(data):
 	global PREV_IMG
+	global PREV_POSITION
 	global READY
+	measured_position = list(CURRENT_POSITION) # we want the measured position to be as close to the time the lidar data was measured as possible. It's possible that the current position could change during this callback
 	bridge = CvBridge()
 	gen = point_cloud2.read_points(data, field_names = ("x", "y", "ring"))
 
@@ -46,24 +63,52 @@ def callback(data):
 				y_voxel = int((j[1]+17.5)*10)
 				ring = int(j[2]-_RING_MIN)
 				voxels[x_voxel][y_voxel][ring] = 255
-
+	
+	#Original order, subtracting the 3d image
 	if READY:
-		subtracted_image = cv2.subtract(voxels, PREV_IMG)
+		
+		y_shift = int((measured_position[0] - PREV_POSITION[0]) * -10)
+		x_shift = int((measured_position[1] - PREV_POSITION[1]) * -10)
+		rospy.loginfo("X: " + str(x_shift) + " | Y: " + str(y_shift))
+		shift = np.float32([[1, 0, x_shift],[0,1,y_shift]])
+		rows, cols, zeasus = voxels.shape
+		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
+		subtracted_image = cv2.subtract(voxels, shifted_prev_img)
 		filtered_image = im_3d_filter(subtracted_image)
 		flat_image = flatten(filtered_image)
-		flat_image = im_2d_filter(flat_image)
+		filtered_flat_image = im_2d_filter(flat_image)
 		
-		ret, thresh = cv2.threshold(flat_image, 127, 255, 0)
-		im2, contours, hierarch = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-		rospy.loginfo("Objects Found = " + str(len(contours)))
-		
-		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
+		image_message = bridge.cv2_to_imgmsg(filtered_flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
-		#image_message = bridge.cv2_to_imgmsg(filtered_image, encoding="passthrough")
 		pub.publish(image_message)
-	
+		
 	PREV_IMG = voxels
+	PREV_POSITION = measured_position
 	READY = True
+		
+		
+	# New order, subtracting 3d filtered image
+	'''filtered_image = im_3d_filter(voxels)
+	
+	
+	if READY:
+		x_shift = int(measured_position[0] - PREV_POSITION[0])
+		y_shift = int(measured_position[1] - PREV_POSITION[1])
+		shift = np.float32([[1, 0, x_shift],[0,1,y_shift]])
+		rows, cols, zeasus = voxels.shape
+		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
+		
+		subtracted_image = cv2.subtract(filtered_image, shifted_prev_img)
+		flat_image = flatten(subtracted_image)
+		filtered_flat_image = im_2d_filter(flat_image)
+		
+		image_message = bridge.cv2_to_imgmsg(filtered_flat_image, encoding="passthrough")
+		image_message.header.stamp = rospy.Time.now()
+		pub.publish(image_message)
+		
+	PREV_IMG = filtered_image
+	READY = True'''
+	
 	
 def flatten(image):
 	#rospy.loginfo(str(np.where(np.logical_and(image > 0, image < 255))))
@@ -76,7 +121,7 @@ def flatten(image):
 			
 def im_2d_filter(image):
 	imcopy = image
-	detection_thresh = 200
+	detection_thresh = 245
 	imcopy[imcopy > detection_thresh] = 255
 	imcopy[imcopy <= detection_thresh] = 0
 	imcopycopy = imcopy
@@ -86,6 +131,7 @@ def im_2d_filter(image):
 		adjacent_pixels = check_nearby_pixels(pixel, imcopy)
 		if(adjacent_pixels < 2):
 			imcopycopy[pixel[0]][pixel[1]] = 0
+	imcopycopy[171:180][171:180] = 0
 	return imcopycopy
 
 
@@ -99,7 +145,7 @@ def im_3d_filter(image):
 		pixels.append([raw_pixels[0][i], raw_pixels[1][i], raw_pixels[2][i]])
 		
 	for pixel in pixels:
-		adjacent_pixels = check_nearby_pixels(pixel, image)*40
+		adjacent_pixels = check_nearby_pixels(pixel, image)*36
 		if(adjacent_pixels > 255):
 			adjacent_pixels = 255
 		imcopy[pixel[0]][pixel[1]][pixel[2]] = int(adjacent_pixels)
@@ -107,11 +153,7 @@ def im_3d_filter(image):
 	return imcopy
 		
 		
-'''
-	
-'''
 def check_nearby_pixels(pixel_location, image):
-
 	i = 0
 	x_lower_bound = pixel_location[0] - 1
 	if(x_lower_bound < 0):
@@ -153,6 +195,7 @@ def check_nearby_pixels(pixel_location, image):
 def main():
 	rospy.init_node('voxelizer', anonymous=False)
 	rospy.Subscriber("/ns1/velodyne_points", PointCloud2, callback)
+	rospy.Subscriber("/pose_info", Pose, position_callback)
 	rospy.spin()
 
 	

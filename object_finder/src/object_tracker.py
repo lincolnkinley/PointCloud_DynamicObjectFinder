@@ -48,15 +48,18 @@ class object_tracker:
 				self.ID_count += 1
 		
 		for obj in self.dynamic_objects:
+			obj.estimate_object()
+			
+		for obj in self.dynamic_objects:
 			if(obj.deletion_flag == True):
 				del(obj)
-			else:
-				obj.estimate_object()
+
 	
 	def pretty(self):
 		string = ""
 		for obj in self.dynamic_objects:
-			string += "Object: " + str(obj.ID) + " | X: " + str(obj.position[0]) + " | Y: " + str(obj.position[1]) + " | Size: " + str(obj.size) + "\n" 
+			#if(obj.ready_flag == True):
+			string += "Object: " + str(obj.title) + " | X: " + str(obj.position[0]) + " | Y: " + str(obj.position[1]) + " | Size: " + str(obj.size) + "\n" 
 		return string
 		
 
@@ -68,7 +71,7 @@ class dynamic_object:
 		self.size = size
 		self.position = position # 1d array [x, y], relative to lidar, NOT IN VOXELS!
 		self.velocity = [0, 0] # 1d array [speed (m/s), direction]
-		self.title = "unknown"
+		self.title = "unassigned"
 		self.ready_flag = False # object will not be considered until true, allows time for classification
 		self.deletion_flag = False
 		self.update_flag = False # true after the object was updated, false after object is estimated. Used to keep track of which objects were seen
@@ -97,9 +100,32 @@ class dynamic_object:
 		# small slow objects = pedestrian
 		# small fast objects = cyclist
 		# very small or very large objects = noise
-		self.title = "dynamic object"
-		self.ready_flag = True # we might not need ready_flag at all...
-		# TODO
+		if(self.size > 10):
+			if(self.size > 30):
+				
+				self.title = "Large Noise"
+				self.deletion_flag = True
+			elif(self.velocity[0] > 0.1):
+				rospy.loginfo("Car!")
+				self.title = "vehicle"
+				self.ready_flag = True
+			else:
+				self.title = "Unknown"
+		elif(self.size >= 1.0):
+			if(self.velocity[0] > 0.5):
+				rospy.loginfo("Cyclist")
+				self.title = "cyclist"
+				self.ready_flag = True
+			elif(self.velocity[0] > 0.1):
+				rospy.loginfo("Pedesitran")
+				self.title = "Pedestrian"
+				self.ready_flag = True
+			else:
+				self.title = "Unknown"
+		else:
+			self.title = "Noise"
+			self.deletion_flag = True
+				
 	
 	
 	def update(self, blob, time_change):
@@ -111,6 +137,7 @@ class dynamic_object:
 		self.velocity = [speed, angle]
 		self.size = blob.size # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
 		self.update_flag = True
+		self.lost_loops = 0;
 		
 		
 	def estimate(self, time_change):

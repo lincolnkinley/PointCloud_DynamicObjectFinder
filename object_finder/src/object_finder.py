@@ -98,7 +98,6 @@ def callback(data):
     blobs = get_blobs(contours)
     float_time = time_change.to_sec()
     OBJ_TRACKER.update(blobs, float_time)
-    rospy.logindo
     rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
