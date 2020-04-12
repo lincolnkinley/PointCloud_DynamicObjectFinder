@@ -58,6 +58,7 @@ def callback(data):
 		rospy.loginfo("Objects Found = " + str(len(contours)))
 		
 		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
+		image_message.header.stamp = rospy.Time.now()
 		#image_message = bridge.cv2_to_imgmsg(filtered_image, encoding="passthrough")
 		pub.publish(image_message)
 	

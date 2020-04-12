@@ -48,7 +48,7 @@ def callback(data):
     global PREV_TIME
     bridge = CvBridge()
     image = bridge.imgmsg_to_cv2(data)
-    ros_time = data.header.time
+    ros_time = data.header.stamp
     if(PREV_TIME == None):
     	# assume that 0.1 seconds has passed. This is approxamately correct for the VLP-16
     	PREV_TIME = ros_time - 0.1
