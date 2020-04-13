@@ -26,7 +26,6 @@ class object_tracker:
 		for i in range(len(blobs)):
 			for j in range(len(self.dynamic_objects)):
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
-		rospy.loginfo(str(cost))
 		row_ind, col_ind = linear_sum_assignment(cost)
 		blobs_copy = np.copy(blobs)
 		# copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied

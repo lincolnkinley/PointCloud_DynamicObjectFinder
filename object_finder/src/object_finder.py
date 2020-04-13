@@ -31,11 +31,15 @@ def get_blobs(contours):
 
 
 def blob_position(cont):
-    pixel=cont[0][0]
-    x_pixel=float(pixel[0]-175)*0.1
-    y_pixel=float(pixel[1]-175)*0.1
-    
-    return [x_pixel, y_pixel]
+	M = cv2.moments(cont)
+	cX = 0.0
+	cY = 0.0
+	if(M["m00"] != 0.0):
+		cX = int(M["m10"] / M["m00"])
+		cY = int(M["m01"] / M["m00"])
+	x_pixel=float(cX-175)*0.1
+	y_pixel=float(cY-175)*0.1
+	return [x_pixel, y_pixel]
 
 
 def blob_size(cont):
@@ -107,8 +111,13 @@ def callback(data):
     font = cv2.FONT_HERSHEY_SIMPLEX
     for obj in tracked_obj:
     	#cv2.putText(color, obj[1], obj[0], font, 1, (0, 255, 0), 1, cv2.LINE_AA)
-    	color[obj[0][1]][obj[0][0]] = (0,255,0)
-    cv2.putText(color, "f", (5,100), font, 1, (0, 255, 0), 1, cv2.LINE_AA)
+    	
+    	x = obj[0][0]
+    	y = obj[0][1]
+    	try:
+            color[y][x] = (0,255,0)
+        except:
+            pass
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
     pub_objects.publish(image_message)
     #rospy.loginfo(OBJ_TRACKER.pretty())
