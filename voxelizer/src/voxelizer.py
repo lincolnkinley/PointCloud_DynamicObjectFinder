@@ -98,7 +98,7 @@ def callback(data):
 		flat_image = flatten(filtered_image)
 		
 		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
-		#flat_image = im_2d_filter(flat_image)
+		flat_image = im_2d_filter(flat_image)
 		
 		#keypoints = detector.detect(flat_image)
 		#rospy.loginfo(str(keypoints))
