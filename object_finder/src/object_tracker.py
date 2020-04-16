@@ -10,7 +10,7 @@ from scipy.optimize import linear_sum_assignment
 import numpy as np
 
 _LOST_THRESH = 20 # number of loops before an object is considered lost and will be deleted
-_DIFF_THRESH = 50 # threshold for considering an object to be a different object
+_DIFF_THRESH = 200 # threshold for considering an object to be a different object
 _MIN_SIZE = 1 # Minimus size, lower than this is considered noise and will be deleted
 _MAX_SIZE = 25 # Max size, higher than this means something went wrong and the object should be ignored
 
@@ -26,6 +26,7 @@ class object_tracker:
 		for i in range(len(blobs)):
 			for j in range(len(self.dynamic_objects)):
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
+		#rospy.loginfo(str(cost))
 		row_ind, col_ind = linear_sum_assignment(cost)
 		blobs_copy = np.copy(blobs)
 		# copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
@@ -49,19 +50,11 @@ class object_tracker:
 		#rospy.loginfo(str(blobs_copy))
 		for blob in blobs_copy:
 			if(blob != None):
-				self.dynamic_objects.append(dynamic_object(self.ID_count, blob.size, blob.position))
+				self.dynamic_objects.append(dynamic_object(self.ID_count, blob.size, blob.pt))
 				self.ID_count += 1
-		
 		for obj in self.dynamic_objects:
 			obj.estimate_object()
 			
-		# This doesn't work
-		#for obj in self.dynamic_objects:
-		#	if(obj.deletion_flag == True):
-		#		del(obj)
-		
-		# This doesn't work either
-		#self.dynamic_objects = filter(lambda f: f.deletion_flag == True, self.dynamic_objects)
 		
 		i = 0
 		length = len(self.dynamic_objects)
@@ -82,44 +75,42 @@ class object_tracker:
 		string = ""
 		for obj in self.dynamic_objects:
 			#if(obj.ready_flag == True):
-			string += "Object: " + str(obj.title) + " | X: " + str(obj.position[0]) + " | Y: " + str(obj.position[1]) + " | Size: " + str(obj.size) + "\n" 
+			string += "Object: " + str(obj.title) + " | X: " + str(obj.pt[0]) + " | Y: " + str(obj.pt[1]) + " | Size: " + str(obj.size) + "\n" 
 		return string
 		
 	def tracked_objects(self):
 		objects = []
 		for obj in self.dynamic_objects:
 			if(obj.ready_flag == True):
-				x = int((obj.position[0] + 17.5)*10)
-				y = int((obj.position[1] + 17.5)*10)
-				objects.append([(x, y), obj.title, obj.ID])
+				objects.append([obj.pt, obj.title, obj.ID])
 		return objects
 		
 
 
 		
 class dynamic_object:
-	def __init__(self, ID, size, position):
+	def __init__(self, ID, size, pt):
 		self.ID = ID
 		self.size = size
-		self.position = position # 1d array [x, y], relative to lidar, NOT IN VOXELS!
+		self.pt = pt # 1d array [x, y], relative to lidar, NOT IN VOXELS!
 		self.velocity = [0, 0] # 1d array [speed (m/s), direction]
 		self.title = "unassigned"
 		self.ready_flag = False # object will not be considered until true, allows time for classification
 		self.deletion_flag = False
 		self.update_flag = False # true after the object was updated, false after object is estimated. Used to keep track of which objects were seen
 		self.lost_loops = 0
-		if(self.size < _MIN_SIZE):
+		'''if(self.size < _MIN_SIZE):
 			self.deletion_flag = True
 		elif(self.size > _MAX_SIZE):
-			self.deletion_flag = True
+			self.deletion_flag = True'''
 	
 	
 	def match(self, blob):
 		score = 0.0
 		size_delta = blob.size-self.size
-		x_delta = blob.position[0] - self.position[0]
-		y_delta = blob.position[1] - self.position[1]
-		distance_delta = ((x_delta**2)+(y_delta**2))**2
+		x_delta = blob.pt[0] - self.pt[0]
+		y_delta = blob.pt[1] - self.pt[1]
+		distance_delta = ((x_delta**2)+(y_delta**2))
 		
 		score += 0.25*distance_delta**2
 		score += size_delta**2
@@ -165,11 +156,11 @@ class dynamic_object:
 			if(self.velocity[0] != 0):
 				self.title = "vehicle"
 				self.ready_flag = True
-		elif(self.size >= 2.0):
+		elif(self.size >= 4.0):
 			if(self.velocity[0] != 0):
 				self.title = "cyclist"
 				self.ready_flag = True
-		elif(self.size >= 0.0):
+		elif(self.size >= 2.0):
 			if(self.velocity[0] != 0):
 				self.title = "Pedestrian"
 				self.ready_flag = True
@@ -181,9 +172,10 @@ class dynamic_object:
 	
 	def update(self, blob, time_change):
 		# Call this every callback when the object has been detected
-		x_displacement = blob.position[0] - self.position[0]
-		y_displacement = blob.position[1] - self.position[1]
+		x_displacement = blob.pt[0] - self.pt[0]
+		y_displacement = blob.pt[1] - self.pt[1]
 		speed = (((x_displacement)**2+(y_displacement)**2)**0.5)/time_change
+		rospy.loginfo(str(speed))
 		angle = math.atan2(y_displacement, x_displacement)
 		self.velocity = [speed, angle]
 		self.size = blob.size # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
@@ -193,20 +185,22 @@ class dynamic_object:
 		
 	def estimate(self, time_change):
 		# Call this every callback when the object is not detected
-		x = self.position[0]
-		y = self.position[1]
+		x = self.pt[0]
+		y = self.pt[1]
 		speed = self.velocity[0]
 		angle = self.velocity[1]
 		x = x + speed*math.cos(angle)*time_change
 		y = y + speed*math.sin(angle)*time_change
-		self.position = [x, y]
-		if((abs(x) > 30 ) or (abs(y) > 30)):
+		self.pt = [x, y]
+		if((x < 0) or (x > 350) or (y < 0) or (y > 350)):
+			rospy.loginfo(str(self.ID) + " got too far away: " + str(x) + ", " + str(y))
 			self.deletion_flag = True
 		self.lost_loops += 1
 		if(self.lost_loops > _LOST_THRESH):
+			rospy.loginfo("Lost " + str(self.ID))
 			self.deletion_flag = True
 			
 class blobject:
-	def __init__(self, position, size):
-		self.position = position
+	def __init__(self, pt, size):
+		self.pt = pt
 		self.size = size

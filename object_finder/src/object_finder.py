@@ -58,26 +58,32 @@ def callback(data):
     if(PREV_TIME == None):
     	# assume that 0.1 seconds has passed. This is approxamately correct for the VLP-16
     	PREV_TIME = ros_time - rospy.Duration.from_sec(0.1)
-    time_change = PREV_TIME - ros_time
+    time_change = ros_time - PREV_TIME
 
     PREV_TIME = ros_time
+    float_time = time_change.to_sec()
 
 
     #Blob Method
-    '''
+    
     #set-up blob parameters
     params = cv2.SimpleBlobDetector_Params()
 
     #Filtering white spaces
-    params.filterByColor = True
-    params.blobColor = 255
+    params.filterByColor = False
+    #params.blobColor = 255
+    
+    params.filterByArea = True
+    params.minArea = 3
+    params.maxArea = 900
 
     #setting threshold values
-    params.minThreshold = 0
-    params.maxThreshold = 200
+    params.minThreshold = 40
+    params.maxThreshold = 256
 
     ## check opencv version and construct the detector
     is_v2 = cv2.__version__.startswith("2.")
+    detector = None
     if is_v2:
         detector = cv2.SimpleBlobDetector(params)
     else:
@@ -85,50 +91,65 @@ def callback(data):
 
     # Detect blobs.
     keypoints = detector.detect(image)
-    nblobs=len(keypoints)
-    #print(nblobs)
     
-    for i in range(nblobs):
+    
+    
+    for i in range(len(keypoints)):
         x = keypoints[i].pt[0] #i is the index of the blob you want to get the position
         y = keypoints[i].pt[1]
-        s = keyPoint.size
-        #print(x)
-        #print(y)
+        s = keypoints[i].size
+        #rospy.loginfo("Obj[" + str(i) + "] size: "+ str(s))
+        
+    OBJ_TRACKER.update(keypoints, float_time)
+    
+    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+    color = cv2.drawKeypoints(color, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    
+    # contour detection 
     '''
-
     contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     #print(len(contours))
     #print(contours)
     
 
     blobs = get_blobs(contours)
-    float_time = time_change.to_sec()
-    OBJ_TRACKER.update(blobs, float_time)
-    tracked_obj = OBJ_TRACKER.tracked_objects()
     
-    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+    OBJ_TRACKER.update(blobs, float_time)
+    '''
+    
+    tracked_obj = OBJ_TRACKER.tracked_objects()
+    #rospy.loginfo(OBJ_TRACKER.pretty())
+    
+    
     
     font = cv2.FONT_HERSHEY_SIMPLEX
+    #rospy.loginfo("Objects Detected: " + str(len(keypoints)))
+    #rospy.loginfo("Objects tracked: " + str(len(tracked_obj)))
     for obj in tracked_obj:
-    	#cv2.putText(color, obj[1], obj[0], font, 1, (0, 255, 0), 1, cv2.LINE_AA)
     	
-    	x = obj[0][0]
-    	y = obj[0][1]
+    	x = int(obj[0][0])
+    	y = int(obj[0][1])
     	try:
-            color[y][x] = (0,255,0)
-        except:
-            pass
+    		color[y,x] = (255,0,0)
+    	except:
+    		pass
+            
+
+ 
+
+    
+    
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
     pub_objects.publish(image_message)
     #rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
-
+    
 
 def main():
     #rospy.init_node('image_listener')
     rospy.init_node('detector', anonymous=False)
-    rospy.Subscriber("/voxel_image", Image, callback)
+    rospy.Subscriber("/noise_image", Image, callback)
     rospy.spin()
 
 
