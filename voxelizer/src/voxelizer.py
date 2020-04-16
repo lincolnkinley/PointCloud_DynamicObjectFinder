@@ -32,7 +32,8 @@ _RING_MAX = 8 # highest ring that will
 
 
 
-pub = rospy.Publisher('voxel_image', Image, queue_size=10)
+thresh_pub = rospy.Publisher('voxel_image', Image, queue_size=10)
+noise_pub= rospy.Publisher('noise_image', Image, queue_size=10)
 
 def position_callback(data):
 	global CURRENT_POSITION
@@ -97,6 +98,10 @@ def callback(data):
 		
 		flat_image = flatten(filtered_image)
 		
+		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
+		image_message.header.stamp = rospy.Time.now()
+		noise_pub.publish(image_message)
+		
 		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
 		flat_image = im_2d_filter(flat_image)
 		
@@ -107,49 +112,23 @@ def callback(data):
 		
 		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
-		pub.publish(image_message)
+		thresh_pub.publish(image_message)
+		
+		
 		
 	PREV_IMG = voxels
 	PREV_POSITION = measured_position
 	READY = True
 		
-		
-	# New order, subtracting 3d filtered image
-	'''filtered_image = im_3d_filter(voxels)
-	kernel = np.ones((3,3),np.float32)/9
-	filtered_image = cv2.filter2D(filtered_image,-1,kernel)
-	flat_image = flatten(filtered_image)
-	
-	
-	if READY:
-		x_shift = int(measured_position[0] - PREV_POSITION[0])
-		y_shift = int(measured_position[1] - PREV_POSITION[1])
-		shift = np.float32([[1, 0, x_shift],[0,1,y_shift]])
-		rows, cols, zeasus = voxels.shape
-		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
-		
-		subtracted_image = cv2.subtract(flat_image, shifted_prev_img)
-		
-		#filtered_flat_image = im_2d_filter(subtracted_image)
-		
-		image_message = bridge.cv2_to_imgmsg(subtracted_image, encoding="passthrough")
-		image_message.header.stamp = rospy.Time.now()
-		pub.publish(image_message)
-		
-	PREV_IMG = flat_image
-	PREV_POSITION = measured_position
-	READY = True'''
-	
 	
 def flatten(image):
-	#rospy.loginfo(str(np.where(np.logical_and(image > 0, image < 255))))
 	imcopy = np.sum(image, axis=2)
 	imcopy = imcopy.astype(np.uint8)
-	#rospy.loginfo(str(imcopy.shape))
-			
 	return imcopy
 		
-			
+# This funciton will threshold the input image based off of detection_thresh
+# output is a binary image of pixles that survive the thresholding
+# function also sets pixles in the center to zero
 def im_2d_filter(image):
 	imcopy = image
 	detection_thresh = 250
@@ -162,7 +141,7 @@ def im_2d_filter(image):
 		adjacent_pixels = check_nearby_pixels(pixel, imcopy)
 		if(adjacent_pixels < 2):
 			imcopycopy[pixel[0]][pixel[1]] = 0
-	imcopycopy[171:180][171:180] = 0
+	imcopycopy[171:180,171:180] = 0
 	return imcopycopy
 
 
