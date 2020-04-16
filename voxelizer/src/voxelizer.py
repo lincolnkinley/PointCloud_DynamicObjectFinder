@@ -25,10 +25,13 @@ READY = False
 PREV_POSITION = [0,0]
 CURRENT_POSITION = [0,0]
 
+# This represents how sensitive the returned image is. Lower numbers = more sensitive. Based on the number of scanned rings
+_DETECTION_THRESH = 85
+
 _SIZE = 350
 _RING = 7
 _RING_MIN = 5 # lowest ring that will be scanned
-_RING_MAX = 8 # highest ring that will
+_RING_MAX = 9 # highest ring that will
 
 
 
@@ -89,20 +92,27 @@ def callback(data):
 		shifted_prev_img = cv2.warpAffine(PREV_IMG, shift, (cols, rows))
 		
 		subtracted_image = cv2.subtract(voxels, shifted_prev_img)
+		filtered_image = subtracted_image
 		filtered_image = im_3d_filter(subtracted_image)
+		#filtered_image = cv2.blur(subtracted_image,(3,3))
+		#filtered_image = cv2.medianBlur(subtracted_image,1)
 		
-		#kernel = np.ones((3,3),np.float32)/9
+		
+		#kernel = np.ones((2,2),np.float32)/4
 		#filtered_image = cv2.filter2D(filtered_image,-1,kernel)
 		
 		
 		
 		flat_image = flatten(filtered_image)
+		flat_image = cv2.GaussianBlur(flat_image,(3,3),0)
+		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
 		
 		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
 		noise_pub.publish(image_message)
 		
-		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
+		
+		
 		flat_image = im_2d_filter(flat_image)
 		
 		#keypoints = detector.detect(flat_image)
@@ -155,11 +165,21 @@ def im_3d_filter(image):
 		pixels.append([raw_pixels[0][i], raw_pixels[1][i], raw_pixels[2][i]])
 		
 	for pixel in pixels:
-		adjacent_pixels = check_nearby_pixels(pixel, image)*38
+		adjacent_pixels = check_nearby_pixels(pixel, image)*(85/(_RING_MAX - _RING_MIN + 1))
 		if(adjacent_pixels > 255):
+			#rospy.loginfo("Greater than 255 detected!")
 			adjacent_pixels = 255
 		imcopy[pixel[0]][pixel[1]][pixel[2]] = int(adjacent_pixels)
 
+	return imcopy
+	
+def other_im_3d_filter(image):
+	# This one doesn't work when people are partiall obscured
+	imcopy = np.zeros((_SIZE, _SIZE, _RING_MAX-_RING_MIN+1), dtype=np.uint8)
+	
+	super_threshold_indices = (image != 0)
+	imcopy[super_threshold_indices] = 255/(_RING_MAX - _RING_MIN + 1)
+	
 	return imcopy
 		
 		
