@@ -175,7 +175,6 @@ class dynamic_object:
 		x_displacement = blob.pt[0] - self.pt[0]
 		y_displacement = blob.pt[1] - self.pt[1]
 		speed = (((x_displacement)**2+(y_displacement)**2)**0.5)/time_change
-		rospy.loginfo(str(speed))
 		angle = math.atan2(y_displacement, x_displacement)
 		self.velocity = [speed, angle]
 		self.size = blob.size # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
