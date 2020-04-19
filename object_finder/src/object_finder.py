@@ -171,6 +171,8 @@ def extract_and_filter(image):
         			
     for contour in detected_contours:
     	detected_objects.append(blobject(blob_position(contour), blob_size(contour)))
+	x,y,w, h=cv2.boundingRect(contour)
+	image=cv2.rectangle(image, (x,y), (x+w, y+h), (2550,0,0), 1)
     	
     return detected_objects
         		
