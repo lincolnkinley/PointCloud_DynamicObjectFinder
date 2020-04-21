@@ -10,6 +10,9 @@ from object_tracker import *
 
 from sensor_msgs.msg import Image 
 from std_msgs.msg import Float64, Float64MultiArray
+
+from object_finder.msg import *
+
 from cv_bridge import CvBridge
 
 pub_objects=rospy.Publisher('tracked_objects', Image, queue_size=5)

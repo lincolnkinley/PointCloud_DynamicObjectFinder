@@ -3,6 +3,6 @@
 <launch>
 	<include file="$(find voxelizer)/launch/voxelizer.launch" />
 	<include file="$(find odom_filter)/launch/odom.launch" />
-	<include file="$(find object_finder)/launch/object_finder.launch" />
+	<include file="$(find object_finder)/launch/ObjectFinder.launch" />
 
 </launch>
