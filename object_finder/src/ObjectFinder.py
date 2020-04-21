@@ -15,7 +15,9 @@ from object_finder.msg import *
 
 from cv_bridge import CvBridge
 
-pub_objects=rospy.Publisher('tracked_objects', Image, queue_size=5)
+
+pub_objects = rospy.Publisher("tracked_objects", BoxArray, queue_size=5)
+pub_objects_im=rospy.Publisher('tracked_objects_im', Image, queue_size=5)
 
 pub_image=rospy.Publisher('contours', Image, queue_size=5)
 pub_data_image=rospy.Publisher('data_image', Image, queue_size=5)
@@ -25,13 +27,36 @@ pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
 
 OBJ_TRACKER = object_tracker()
 PREV_TIME = None
+SEQ = 0
+
+_UPPER_Z = 0.5
+_LOWER_Z = -1.5
+
+
+def get_bounding_box(blob):
+	x = (blob.blobj.x-175)/10
+	y = (blob.blobj.y-175)/10
+	w = (blob.blobj.w-175)/10
+	h = (blob.blobj.h-175)/10
+	
+	bb = BoundingBox()
+	bb.p1.x = x
+	bb.p1.y = y
+	bb.p1.z = _UPPER_Z
+	
+	bb.p2.x = x+w
+	bb.p2.y = y+h
+	bb.p2.z = _LOWER_Z
+	
+	return bb
 
 def get_blobs(contours):
 	blobs = []
 	for obj in contours:
 		pos = blob_position(obj)
 		size = blob_size(obj)
-		blobs.append(blobject(pos, size))
+		x,y,w,h = cv2.boundingRect(obj)
+		blobs.append(blobject(pos, size, x, y, w, h))
 	return blobs
 
 
@@ -49,14 +74,13 @@ def blob_position(cont):
 
 def blob_size(cont):
     area = cv2.contourArea(cont)
-    #perimeter = cv2.arcLength(cont, False)
-    
     return area
 
 
 def callback(data):
     global OBJ_TRACKER
     global PREV_TIME
+    global SEQ
     bridge = CvBridge()
     image = bridge.imgmsg_to_cv2(data)
     ros_time = data.header.stamp
@@ -92,14 +116,16 @@ def callback(data):
     #rospy.loginfo(OBJ_TRACKER.pretty())
     
     
-    
     font = cv2.FONT_HERSHEY_SIMPLEX
     #rospy.loginfo("Objects Detected: " + str(len(keypoints)))
     #rospy.loginfo("Objects tracked: " + str(len(tracked_obj)))
+    box_array = []
     for obj in tracked_obj:
+    	box_array.append(get_bounding_box(obj))
     	
-    	x = int(obj[0][0])
-    	y = int(obj[0][1])
+    	# color the image
+    	x = obj.blobj.pt[0]
+    	y = obj.blobj.pt[1]
     	try:
     		color[y,x] = (0,255,0)
     	except:
@@ -108,10 +134,16 @@ def callback(data):
 
  
 
+    ba = BoxArray()
+    ba.boxes = box_array
+    ba.header.seq = SEQ
+    ba.header.stamp = ros_time
+    ba.header.frame_id = data.header.frame_id
     
     
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
-    pub_objects.publish(image_message)
+    pub_objects_im.publish(image_message)
+    pub_objects.publish(ba)
     #rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
@@ -173,9 +205,9 @@ def extract_and_filter(image):
         			detected_contours.append(contour)
         			
     for contour in detected_contours:
-    	detected_objects.append(blobject(blob_position(contour), blob_size(contour)))
-	x,y,w, h=cv2.boundingRect(contour)
-	image=cv2.rectangle(image, (x,y), (x+w, y+h), (2550,0,0), 1)
+    	x,y,w,h = cv2.boundingRect(contour)
+    	detected_objects.append(blobject(blob_position(contour), blob_size(contour), x, y, w, h))
+	    
     	
     return detected_objects
         		
