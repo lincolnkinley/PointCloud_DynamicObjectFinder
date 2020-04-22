@@ -25,13 +25,11 @@ READY = False
 PREV_POSITION = [0,0]
 CURRENT_POSITION = [0,0]
 
-# This represents how sensitive the returned image is. Lower numbers = more sensitive. Based on the number of scanned rings
-_DETECTION_THRESH = 85
-
 _SIZE = 350
-_RING = 7
 _RING_MIN = rospy.get_param("/ring_min") # lowest ring that will be scanned
 _RING_MAX = rospy.get_param("/ring_max") # highest ring that will
+_LIDAR_TOPIC = rospy.get_param("/lidar_topic") # lowest ring that will be scanned
+_ODOM_TOPIC = rospy.get_param("/odom_topic") # highest ring that will
 
 
 original_pub = rospy.Publisher('voxel_data/original', Image, queue_size=1)
@@ -94,21 +92,12 @@ def callback(data):
 		subtracted_image = cv2.subtract(voxels, shifted_prev_img)
 		filtered_image = subtracted_image
 		filtered_image = im_3d_filter(subtracted_image)
-		#filtered_image = cv2.blur(subtracted_image,(3,3))
-		#filtered_image = cv2.medianBlur(subtracted_image,1)
-		
-		
-		#kernel = np.ones((2,2),np.float32)/4
-		#filtered_image = cv2.filter2D(filtered_image,-1,kernel)
-		
-		
 		
 		flat_image = flatten(filtered_image)
 		flat_image = cv2.GaussianBlur(flat_image,(3,3),0)
 		
 		flat_original = flatten(voxels)
 		flat_original = cv2.GaussianBlur(flat_original,(3,3),0)
-		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
 		
 		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
@@ -229,8 +218,8 @@ def check_nearby_pixels(pixel_location, image):
 
 def main():
 	rospy.init_node('voxelizer', anonymous=False)
-	rospy.Subscriber("/ns2/velodyne_points", PointCloud2, callback)
-	rospy.Subscriber("/pose_info", Pose, position_callback)
+	rospy.Subscriber(_LIDAR_TOPIC, PointCloud2, callback)
+	rospy.Subscriber(_ODOM_TOPIC, Pose, position_callback)
 	rospy.spin()
 
 	

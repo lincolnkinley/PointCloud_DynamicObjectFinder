@@ -1,2 +1,4 @@
 ring_min: 5
 ring_max: 9
+lidar_topic: '/ns2/velodyne_points'
+odom_topic: '/pose_info'
