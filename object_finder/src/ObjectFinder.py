@@ -40,13 +40,16 @@ def get_bounding_box(blob):
 	h = (blob.blobj.h-175)/10
 	
 	bb = BoundingBox()
-	bb.p1.x = x
+	bb.p1.x = float(x)
 	bb.p1.y = y
 	bb.p1.z = _UPPER_Z
 	
 	bb.p2.x = x+w
 	bb.p2.y = y+h
 	bb.p2.z = _LOWER_Z
+	
+	bb.text = blob.title
+	bb.id = int(blob.ID)
 	
 	return bb
 
@@ -121,7 +124,9 @@ def callback(data):
     #rospy.loginfo("Objects tracked: " + str(len(tracked_obj)))
     box_array = []
     for obj in tracked_obj:
-    	box_array.append(get_bounding_box(obj))
+    	bb = get_bounding_box(obj)
+    	
+    	box_array.append(bb)
     	
     	# color the image
     	x = obj.blobj.pt[0]
@@ -137,13 +142,15 @@ def callback(data):
     ba = BoxArray()
     ba.boxes = box_array
     ba.header.seq = SEQ
+    SEQ += 1
     ba.header.stamp = ros_time
-    ba.header.frame_id = data.header.frame_id
+    ba.header.frame_id = "/vlp16_starboard"
     
     
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
-    pub_objects_im.publish(image_message)
+    #pub_objects_im.publish(image_message)
     pub_objects.publish(ba)
+
     #rospy.loginfo(OBJ_TRACKER.pretty())
 	
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
@@ -183,7 +190,7 @@ def extract_and_filter(image):
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     
     image_message = bridge.cv2_to_imgmsg(thresh, encoding="passthrough")
-    pub_data_image.publish(image_message)
+    #pub_data_image.publish(image_message)
     
     detected_contours = []
     
