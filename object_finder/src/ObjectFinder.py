@@ -34,13 +34,21 @@ _LOWER_Z = -1.5
 
 
 def get_bounding_box(blob):
-	x = (blob.blobj.x-175)/10
-	y = (blob.blobj.y-175)/10
-	w = (blob.blobj.w-175)/10
-	h = (blob.blobj.h-175)/10
+	y = blob.blobj.x
+	x = blob.blobj.y
+	h = blob.blobj.w
+	w = blob.blobj.h
+	rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
+	
+	y = float(blob.blobj.x-175)/10
+	x = float(blob.blobj.y-175)/10
+	h = float(blob.blobj.w)/10
+	w = float(blob.blobj.h)/10
+	rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
+	
 	
 	bb = BoundingBox()
-	bb.p1.x = float(x)
+	bb.p1.x = x
 	bb.p1.y = y
 	bb.p1.z = _UPPER_Z
 	
@@ -129,12 +137,12 @@ def callback(data):
     	box_array.append(bb)
     	
     	# color the image
-    	x = obj.blobj.pt[0]
-    	y = obj.blobj.pt[1]
+    	x = int(obj.blobj.pt[0])
+    	y = int(obj.blobj.pt[1])
     	try:
     		color[y,x] = (0,255,0)
     	except:
-    		pass
+    		rospy.loginfo("X,Y out of bounds: " + str(x) + " | " + str(y))
             
 
  
@@ -144,11 +152,11 @@ def callback(data):
     ba.header.seq = SEQ
     SEQ += 1
     ba.header.stamp = ros_time
-    ba.header.frame_id = "/vlp16_starboard"
+    ba.header.frame_id = "/vlp16_port"
     
     
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
-    #pub_objects_im.publish(image_message)
+    pub_objects_im.publish(image_message)
     pub_objects.publish(ba)
 
     #rospy.loginfo(OBJ_TRACKER.pretty())

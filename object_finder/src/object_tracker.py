@@ -216,7 +216,7 @@ class blobject:
 		self.pt[1] = self.pt[1] + dy
 		self.x = self.x + dx
 		self.y = self.y + dy
-		self.w = self.w + dx
-		self.h = self.h + dy
+		#self.w = self.w
+		#self.h = self.h
 		
 		

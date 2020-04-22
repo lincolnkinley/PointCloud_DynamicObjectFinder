@@ -38,9 +38,9 @@ def callback(data):
 		new_marker.pose = marker_pose
 		
 		scale_vec = Vector3()
-		scale_vec.x = 0.9
-		scale_vec.y = 0.9
-		scale_vec.z = 0.9
+		scale_vec.x = 0.1
+		scale_vec.y = 0.1
+		scale_vec.z = 0.1
 		new_marker.scale = scale_vec
 		
 		line_color = ColorRGBA()
