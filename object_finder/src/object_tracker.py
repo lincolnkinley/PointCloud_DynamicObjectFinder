@@ -10,7 +10,7 @@ from scipy.optimize import linear_sum_assignment
 import numpy as np
 
 _LOST_THRESH = 30 # number of loops before an object is considered lost and will be deleted
-_DIFF_THRESH = 400 # threshold for considering an object to be a different object
+_DIFF_THRESH = 6000 # threshold for considering an object to be a different object
 _MIN_SIZE = 1 # Minimus size, lower than this is considered noise and will be deleted
 _MAX_SIZE = 25 # Max size, higher than this means something went wrong and the object should be ignored
 
@@ -114,7 +114,7 @@ class dynamic_object:
 		y_delta = blob.pt[1] - self.blobj.pt[1]
 		distance_delta = ((x_delta**2)+(y_delta**2))
 		
-		score += 2*(distance_delta**2)
+		score += 0.1*(distance_delta**2)
 		score += size_delta # normally we would squareroot for distance but we would square it here so we do neither to save some computation
 		return score
 	
@@ -158,21 +158,22 @@ class dynamic_object:
 		avg_dist = ((avg_dx**2)+(avg_dy**2))**0.5
 		
 		# basic classifier, does not use velocity only size
-		if(self.blobj.size > 20.0):
+		if(self.blobj.size > 80.0):
 			self.title = "Large Noise"
 			self.deletion_flag = True
-		elif(self.blobj.size > 8.0):
+		elif(self.blobj.size > 49.0):
 			if(avg_dist != 0):
 				self.title = "vehicle"
 				self.ready_flag = True
-		elif(self.blobj.size >= 4.0):
-			if(avg_dist != 0):
+		elif(self.blobj.size >= 3.0):
+			if(avg_dist > 4.1):
 				self.title = "cyclist"
 				self.ready_flag = True
-		elif(self.blobj.size >= 2.0):
-			if(avg_dist != 0):
-				self.title = "Pedestrian"
+			elif(avg_dist != 0):
+				#rospy.loginfo(str(avg_dist))
+				self.title = "pedestrian"
 				self.ready_flag = True
+			
 		else:
 			self.title = "Noise"
 			self.deletion_flag = True
@@ -207,6 +208,10 @@ class dynamic_object:
 			avg_dx = sum(self.past_dx)/len(self.past_dx)
 		if(len(self.past_dy) > 0):
 			avg_dy = sum(self.past_dy)/len(self.past_dy)
+		if((avg_dy > 4.7) or (avg_dx > 4.7)):
+			rospy.loginfo("Fast Delete")
+			self.deletion_flag = True
+			return
 
 		self.blobj.move(avg_dx, avg_dy)
 		

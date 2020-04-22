@@ -34,9 +34,9 @@ _RING_MIN = 5 # lowest ring that will be scanned
 _RING_MAX = 9 # highest ring that will
 
 
-
-thresh_pub = rospy.Publisher('voxel_image', Image, queue_size=10)
-noise_pub= rospy.Publisher('noise_image', Image, queue_size=10)
+original_pub = rospy.Publisher('voxel_data/original', Image, queue_size=1)
+thresh_pub = rospy.Publisher('voxel_data/thresh', Image, queue_size=10)
+noise_pub= rospy.Publisher('voxel_data/noise', Image, queue_size=10)
 
 def position_callback(data):
 	global CURRENT_POSITION
@@ -105,13 +105,18 @@ def callback(data):
 		
 		flat_image = flatten(filtered_image)
 		flat_image = cv2.GaussianBlur(flat_image,(3,3),0)
+		
+		flat_original = flatten(voxels)
+		flat_original = cv2.GaussianBlur(flat_original,(3,3),0)
 		#flat_image = cv2.bilateralFilter(flat_image,5,11,11)
 		
 		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
 		noise_pub.publish(image_message)
 		
-		
+		image_message = bridge.cv2_to_imgmsg(flat_original, encoding="passthrough")
+		image_message.header.stamp = rospy.Time.now()
+		original_pub.publish(image_message)
 		
 		flat_image = im_2d_filter(flat_image)
 		
@@ -224,7 +229,7 @@ def check_nearby_pixels(pixel_location, image):
 
 def main():
 	rospy.init_node('voxelizer', anonymous=False)
-	rospy.Subscriber("/ns1/velodyne_points", PointCloud2, callback)
+	rospy.Subscriber("/ns2/velodyne_points", PointCloud2, callback)
 	rospy.Subscriber("/pose_info", Pose, position_callback)
 	rospy.spin()
 

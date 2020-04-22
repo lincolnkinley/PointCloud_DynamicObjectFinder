@@ -44,10 +44,27 @@ def callback(data):
 		new_marker.scale = scale_vec
 		
 		line_color = ColorRGBA()
-		line_color.r = 0.0
-		line_color.g = 0.5
-		line_color.b = 1.0
-		line_color.a = 1.0
+		if(str(box.text) == "pedestrian"):
+			line_color.r = 0.0
+			line_color.g = 0.0
+			line_color.b = 1.0
+			line_color.a = 1.0
+		elif(str(box.text) == "cyclist"):
+			line_color.r = 0.0
+			line_color.g = 1.0
+			line_color.b = 0.0
+			line_color.a = 1.0
+		elif(str(box.text) == "vehicle"):
+			line_color.r = 1.0
+			line_color.g = 1.0
+			line_color.b = 0.0
+			line_color.a = 1.0
+		else:
+			line_color.r = 1.0
+			line_color.g = 1.0
+			line_color.b = 1.0
+			line_color.a = 1.0
+		
 		new_marker.color = line_color
 		
 		new_marker.lifetime = rospy.Duration.from_sec(0.1)

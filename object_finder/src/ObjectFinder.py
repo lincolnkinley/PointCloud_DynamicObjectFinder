@@ -28,23 +28,35 @@ pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
 OBJ_TRACKER = object_tracker()
 PREV_TIME = None
 SEQ = 0
+ORIGINAL_IMAGE = None
+ORIGINAL_READY = True
 
 _UPPER_Z = 0.5
 _LOWER_Z = -1.5
 
-
+def original_callback(data):
+    bridge = CvBridge()
+    image = bridge.imgmsg_to_cv2(data)
+    global ORIGINAL_IMAGE
+    global ORIGINAL_READY
+    
+    ORIGINAL_IMAGE = image
+    ORIGINAL_READY = True
+	
+	
+	
 def get_bounding_box(blob):
 	y = blob.blobj.x
 	x = blob.blobj.y
 	h = blob.blobj.w
 	w = blob.blobj.h
-	rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
+	#rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
 	
 	y = float(blob.blobj.x-175)/10
 	x = float(blob.blobj.y-175)/10
 	h = float(blob.blobj.w)/10
 	w = float(blob.blobj.h)/10
-	rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
+	#rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
 	
 	
 	bb = BoundingBox()
@@ -92,8 +104,13 @@ def callback(data):
     global OBJ_TRACKER
     global PREV_TIME
     global SEQ
+    global ORIGINAL_READY
     bridge = CvBridge()
     image = bridge.imgmsg_to_cv2(data)
+    while(ORIGINAL_READY == False):
+    	rospy.sleep(0.01)
+    ORIGINAL_READY = False
+    original = ORIGINAL_IMAGE.copy()
     ros_time = data.header.stamp
     if(PREV_TIME == None):
     	# assume that 0.1 seconds has passed. This is approxamately correct for the VLP-16
@@ -103,7 +120,7 @@ def callback(data):
     PREV_TIME = ros_time
     float_time = time_change.to_sec()
 
-    detected_objects = extract_and_filter(image)
+    detected_objects = extract_and_filter(image, original)
     
         
     OBJ_TRACKER.update(detected_objects, float_time)
@@ -152,7 +169,7 @@ def callback(data):
     ba.header.seq = SEQ
     SEQ += 1
     ba.header.stamp = ros_time
-    ba.header.frame_id = "/vlp16_port"
+    ba.header.frame_id = "/vlp16_starboard"
     
     
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
@@ -164,7 +181,7 @@ def callback(data):
     #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
     
 # returns a list of dynamic objects detected in the image
-def extract_and_filter(image):
+def extract_and_filter(image, original):
     bridge = CvBridge()
     #imcopy = np.copy(image)
     #Blob Method
@@ -181,7 +198,7 @@ def extract_and_filter(image):
     params.maxArea = 900
 
     #setting threshold values
-    params.minThreshold = 40
+    params.minThreshold = 30
     params.maxThreshold = 256
 
     ## check opencv version and construct the detector
@@ -194,11 +211,14 @@ def extract_and_filter(image):
 
     # Detect blobs.
     keypoints = detector.detect(image)
-    ret, thresh = cv2.threshold(image, 20, 255, 0)
+    ret, thresh = cv2.threshold(original, 20, 256, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     
-    image_message = bridge.cv2_to_imgmsg(thresh, encoding="passthrough")
-    #pub_data_image.publish(image_message)
+    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+    
+    color = cv2.drawKeypoints(color, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    
+    
     
     detected_contours = []
     
@@ -219,20 +239,23 @@ def extract_and_filter(image):
         		if(covered_flag == False):
         			detected_contours.append(contour)
         			
+    cv2.drawContours(color, contours, -1, (0,255,0), 1)
+    cv2.drawContours(color, detected_contours, -1, (255,0,0), 1)
+    image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
+    pub_data_image.publish(image_message)
     for contour in detected_contours:
     	x,y,w,h = cv2.boundingRect(contour)
     	detected_objects.append(blobject(blob_position(contour), blob_size(contour), x, y, w, h))
 	    
     	
     return detected_objects
-        		
-        #rospy.loginfo("Obj[" + str(i) + "] size: "+ str(s))
     
 
 def main():
     #rospy.init_node('image_listener')
     rospy.init_node('detector', anonymous=False)
-    rospy.Subscriber("/noise_image", Image, callback)
+    rospy.Subscriber("voxel_data/noise", Image, callback)
+    rospy.Subscriber("voxel_data/original", Image, original_callback)
     rospy.spin()
 
 
