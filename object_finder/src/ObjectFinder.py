@@ -7,29 +7,24 @@ import time
 import numpy as np
 
 from object_tracker import *
-
 from sensor_msgs.msg import Image 
-from std_msgs.msg import Float64, Float64MultiArray
-
 from object_finder.msg import *
-
 from cv_bridge import CvBridge
 
-
 pub_objects = rospy.Publisher("tracked_objects", BoxArray, queue_size=5)
-pub_objects_im=rospy.Publisher('tracked_objects_im', Image, queue_size=5)
-
 pub_data_image=rospy.Publisher('data_image', Image, queue_size=5)
 
 OBJ_TRACKER = object_tracker()
 PREV_TIME = None
 SEQ = 0
 ORIGINAL_IMAGE = None
-ORIGINAL_READY = True
+ORIGINAL_READY = False
 
 _LIDAR_FRAME = rospy.get_param("/lidar_frame") # frame of the LiDAR
 _UPPER_Z = rospy.get_param("/upper_z") # upper z limit of bounding box
 _LOWER_Z = rospy.get_param("/lower_z") # lower z limit of bounding box
+_CONTOUR_THRESHOLD = rospy.get_param("/contour_threshold")
+_BLOB_THRESHOLD = rospy.get_param("/contour_threshold")
 
 def original_callback(data):
     bridge = CvBridge()
@@ -46,7 +41,6 @@ def get_bounding_box(blob):
 	x = float(blob.blobj.y-175)/10
 	h = float(blob.blobj.w)/10
 	w = float(blob.blobj.h)/10
-	#rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
 	
 	bb = BoundingBox()
 	bb.p1.x = x
@@ -124,10 +118,6 @@ def callback(data):
     	box_array.append(bb)
     	x = int(obj.blobj.pt[0])
     	y = int(obj.blobj.pt[1])
-    	try:
-    		color[y,x] = (0,255,0)
-    	except:
-    		rospy.loginfo("X,Y out of bounds: " + str(x) + " | " + str(y))
             
     ba = BoxArray()
     ba.boxes = box_array
@@ -135,31 +125,18 @@ def callback(data):
     SEQ += 1
     ba.header.stamp = ros_time
     ba.header.frame_id = _LIDAR_FRAME
-    
-    image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
-    pub_objects_im.publish(image_message)
+
     pub_objects.publish(ba)
 
 	
 # returns a list of dynamic objects detected in the image
 def extract_and_filter(image, original):
-    bridge = CvBridge()
-    #imcopy = np.copy(image)
-    #Blob Method
-    
-    #set-up blob parameters
     params = cv2.SimpleBlobDetector_Params()
-
-    #Filtering white spaces
     params.filterByColor = False
-    #params.blobColor = 255
-    
     params.filterByArea = True
     params.minArea = 3
     params.maxArea = 900
-
-    #setting threshold values
-    params.minThreshold = 30
+    params.minThreshold = _BLOB_THRESHOLD
     params.maxThreshold = 256
 
     ## check opencv version and construct the detector
@@ -170,17 +147,15 @@ def extract_and_filter(image, original):
     else:
         detector = cv2.SimpleBlobDetector_create(params)
 
-    # Detect blobs.
     keypoints = detector.detect(image)
-    ret, thresh = cv2.threshold(original, 20, 256, 0)
+    
+    ret, thresh = cv2.threshold(original, _CONTOUR_THRESHOLD, 256, 0)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     
     color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
-    
     color = cv2.drawKeypoints(color, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     
     detected_contours = []
-    
     detected_objects = []
     
     for keypoint in keypoints:
@@ -200,6 +175,7 @@ def extract_and_filter(image, original):
         			
     cv2.drawContours(color, contours, -1, (0,255,0), 1)
     cv2.drawContours(color, detected_contours, -1, (255,0,0), 1)
+    bridge = CvBridge()
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
     pub_data_image.publish(image_message)
     for contour in detected_contours:
@@ -210,12 +186,15 @@ def extract_and_filter(image, original):
     
 
 def main():
-    #rospy.init_node('image_listener')
-    rospy.init_node('detector', anonymous=False)
+    rospy.init_node("ObjectFinder", anonymous=False)
     rospy.Subscriber("voxel_data/noise", Image, callback)
     rospy.Subscriber("voxel_data/original", Image, original_callback)
     rospy.spin()
 
 
 if __name__ == '__main__':
-   main()
+	try:
+		main()
+	except rospy.ROSInterruptException:
+		pass
+		

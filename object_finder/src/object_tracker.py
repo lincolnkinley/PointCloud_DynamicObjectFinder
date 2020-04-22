@@ -15,6 +15,11 @@ _MIN_SIZE = rospy.get_param("/minimum_size") # Minimus size, lower than this is 
 _MAX_SIZE = rospy.get_param("/maximum_size") # Max size, higher than this means something went wrong and the object should be ignored
 _MAX_LEN = rospy.get_param("/tracked_frames") # number of loops an object will be tracked for. Used to esitmate position of a unseen object
 
+_LARGE_SIZE = rospy.get_param("/large_size") # objects larger than this will be filtered out
+_VEHICLE_SIZE = rospy.get_param("/vehicle_size") # objects larger than this will be classified as a vehicle
+_PEDESTRIAN_SIZE = rospy.get_param("/pedestrian_size") # objects larger than this will be classified as a pedestrian or cyclist depending on speed
+_BICYCLE_SPEED = rospy.get_param("/bicycle_speed")
+
 class object_tracker:
 	def __init__(self):
 		self.dynamic_objects = []
@@ -92,18 +97,15 @@ class object_tracker:
 		
 class dynamic_object:
 	def __init__(self, ID, blob):
-		self.ID = ID
-		
+		self.ID = ID # integer ID used for tracking
 		self.blobj = blob # blobject
-		
-		self.title = "unassigned"
+		self.title = "unassigned" # name of the object, typically vehicle, cyclist, or pedestrian
 		self.ready_flag = False # object will not be considered until true, allows time for classification
-		self.deletion_flag = False
+		self.deletion_flag = False # set this to true and the object will be deleted
 		self.update_flag = False # true after the object was updated, false after object is estimated. Used to keep track of which objects were seen
-		self.lost_loops = 0
-		
-		self.past_dx = []
-		self.past_dy = []
+		self.lost_loops = 0 # number of loops the object has not been seen. Object will be deleted if this is larger than lost_threshold
+		self.past_dx = [] # past changes in x direction, used to estimate next position of object is unseen
+		self.past_dy = [] # past changes in y direction, ""
 	
 	
 	def match(self, blob):
@@ -124,30 +126,7 @@ class dynamic_object:
 		# small slow objects = pedestrian
 		# small fast objects = cyclist
 		# very small or very large objects = noise
-		'''if(self.size > 10):
-			if(self.size > 30):
-				self.title = "Large Noise"
-				self.deletion_flag = True
-			elif(self.velocity[0] > 0.1):
-				rospy.loginfo("Car!")
-				self.title = "vehicle"
-				self.ready_flag = True
-			else:
-				self.title = "Unknown"
-		elif(self.size >= 1.0):
-			if(self.velocity[0] > 0.5):
-				rospy.loginfo("Cyclist")
-				self.title = "cyclist"
-				self.ready_flag = True
-			elif(self.velocity[0] > 0.1):
-				rospy.loginfo("Pedesitran")
-				self.title = "Pedestrian"
-				self.ready_flag = True
-			else:
-				self.title = "Unknown"
-		else:
-			self.title = "Noise"
-			self.deletion_flag = True'''
+
 		avg_dx = 0
 		avg_dy = 0
 		if(len(self.past_dx) > 0):
@@ -156,23 +135,24 @@ class dynamic_object:
 			avg_dy = sum(self.past_dy)/len(self.past_dy)
 		avg_dist = ((avg_dx**2)+(avg_dy**2))**0.5
 		
-		# basic classifier, does not use velocity only size
-		if(self.blobj.size > 80.0):
+		if(self.blobj.size > _LARGE_SIZE):
 			self.title = "Large Noise"
 			self.deletion_flag = True
-		elif(self.blobj.size > 49.0):
+			
+		elif(self.blobj.size > _VEHICLE_SIZE):
 			if(avg_dist != 0):
 				self.title = "vehicle"
 				self.ready_flag = True
-		elif(self.blobj.size >= 3.0):
-			if(avg_dist > 4.1):
+				
+		elif(self.blobj.size >= _PEDESTRIAN_SIZE):
+			if(avg_dist > _BICYCLE_SPEED):
 				self.title = "cyclist"
 				self.ready_flag = True
+				
 			elif(avg_dist != 0):
-				#rospy.loginfo(str(avg_dist))
 				self.title = "pedestrian"
 				self.ready_flag = True
-			
+				
 		else:
 			self.title = "Noise"
 			self.deletion_flag = True
@@ -182,7 +162,6 @@ class dynamic_object:
 	def update(self, blob, time_change):
 		# Call this every callback when the object has been detected
 
-		
 		x_displacement = blob.pt[0] - self.blobj.pt[0]
 		y_displacement = blob.pt[1] - self.blobj.pt[1]
 		
@@ -193,7 +172,6 @@ class dynamic_object:
 		while(len(self.past_dy) > _MAX_LEN):
 			self.past_dy.pop(0)
 		
-		#self.velocity = [speed, angle]
 		self.blobj = blob 
 		self.update_flag = True
 		self.lost_loops = 0;
@@ -240,7 +218,5 @@ class blobject:
 		self.pt[1] = self.pt[1] + dy
 		self.x = self.x + dx
 		self.y = self.y + dy
-		#self.w = self.w
-		#self.h = self.h
 		
 		

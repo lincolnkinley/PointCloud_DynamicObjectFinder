@@ -1,3 +1,7 @@
 upper_z: 0.5
 lower_z: -1.5
 lidar_frame: '/vlp16_starboard'
+
+contour_threshold: 20
+blob_threshold: 30
+
