@@ -30,8 +30,8 @@ _DETECTION_THRESH = 85
 
 _SIZE = 350
 _RING = 7
-_RING_MIN = 5 # lowest ring that will be scanned
-_RING_MAX = 9 # highest ring that will
+_RING_MIN = rospy.get_param("/ring_min") # lowest ring that will be scanned
+_RING_MAX = rospy.get_param("/ring_max") # highest ring that will
 
 
 
