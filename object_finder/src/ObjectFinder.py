@@ -19,11 +19,7 @@ from cv_bridge import CvBridge
 pub_objects = rospy.Publisher("tracked_objects", BoxArray, queue_size=5)
 pub_objects_im=rospy.Publisher('tracked_objects_im', Image, queue_size=5)
 
-pub_image=rospy.Publisher('contours', Image, queue_size=5)
 pub_data_image=rospy.Publisher('data_image', Image, queue_size=5)
-
-pub_position=rospy.Publisher('contour_location', Float64MultiArray, queue_size=5)
-pub_size=rospy.Publisher('contour_size', Float64, queue_size=5)
 
 OBJ_TRACKER = object_tracker()
 PREV_TIME = None
@@ -31,9 +27,9 @@ SEQ = 0
 ORIGINAL_IMAGE = None
 ORIGINAL_READY = True
 
-_LIDAR_FRAME = rospy.get_param("/lidar_frame")
-_UPPER_Z = rospy.get_param("/upper_z") # lowest ring that will be scanned
-_LOWER_Z = rospy.get_param("/lower_z") # lowest ring that will be scanned
+_LIDAR_FRAME = rospy.get_param("/lidar_frame") # frame of the LiDAR
+_UPPER_Z = rospy.get_param("/upper_z") # upper z limit of bounding box
+_LOWER_Z = rospy.get_param("/lower_z") # lower z limit of bounding box
 
 def original_callback(data):
     bridge = CvBridge()
@@ -43,7 +39,6 @@ def original_callback(data):
     
     ORIGINAL_IMAGE = image
     ORIGINAL_READY = True
-	
 	
 	
 def get_bounding_box(blob):
@@ -117,21 +112,16 @@ def callback(data):
 
     detected_objects = extract_and_filter(image, original)
     
-        
     OBJ_TRACKER.update(detected_objects, float_time)
     
     color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
 
-    
     tracked_obj = OBJ_TRACKER.tracked_objects()
     
     box_array = []
     for obj in tracked_obj:
     	bb = get_bounding_box(obj)
-    	
     	box_array.append(bb)
-    	
-    	# color the image
     	x = int(obj.blobj.pt[0])
     	y = int(obj.blobj.pt[1])
     	try:
@@ -139,9 +129,6 @@ def callback(data):
     	except:
     		rospy.loginfo("X,Y out of bounds: " + str(x) + " | " + str(y))
             
-
- 
-
     ba = BoxArray()
     ba.boxes = box_array
     ba.header.seq = SEQ
@@ -149,13 +136,11 @@ def callback(data):
     ba.header.stamp = ros_time
     ba.header.frame_id = _LIDAR_FRAME
     
-    
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
     pub_objects_im.publish(image_message)
     pub_objects.publish(ba)
 
 	
-    
 # returns a list of dynamic objects detected in the image
 def extract_and_filter(image, original):
     bridge = CvBridge()
@@ -194,8 +179,6 @@ def extract_and_filter(image, original):
     
     color = cv2.drawKeypoints(color, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     
-    
-    
     detected_contours = []
     
     detected_objects = []
@@ -223,7 +206,6 @@ def extract_and_filter(image, original):
     	x,y,w,h = cv2.boundingRect(contour)
     	detected_objects.append(blobject(blob_position(contour), blob_size(contour), x, y, w, h))
 	    
-    	
     return detected_objects
     
 

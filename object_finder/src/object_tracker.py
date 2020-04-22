@@ -13,8 +13,7 @@ _LOST_THRESH = rospy.get_param("/lost_threshold") # number of loops before an ob
 _DIFF_THRESH = rospy.get_param("/difference_threshold") # threshold for considering an object to be a different object
 _MIN_SIZE = rospy.get_param("/minimum_size") # Minimus size, lower than this is considered noise and will be deleted
 _MAX_SIZE = rospy.get_param("/maximum_size") # Max size, higher than this means something went wrong and the object should be ignored
-
-_MAX_LEN = rospy.get_param("/tracked_frames")
+_MAX_LEN = rospy.get_param("/tracked_frames") # number of loops an object will be tracked for. Used to esitmate position of a unseen object
 
 class object_tracker:
 	def __init__(self):
