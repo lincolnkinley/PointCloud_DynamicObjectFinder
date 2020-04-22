@@ -9,10 +9,12 @@ import cv2
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 
-_LOST_THRESH = 20 # number of loops before an object is considered lost and will be deleted
-_DIFF_THRESH = 200 # threshold for considering an object to be a different object
+_LOST_THRESH = 30 # number of loops before an object is considered lost and will be deleted
+_DIFF_THRESH = 400 # threshold for considering an object to be a different object
 _MIN_SIZE = 1 # Minimus size, lower than this is considered noise and will be deleted
 _MAX_SIZE = 25 # Max size, higher than this means something went wrong and the object should be ignored
+
+_MAX_LEN = 7
 
 class object_tracker:
 	def __init__(self):
@@ -95,12 +97,14 @@ class dynamic_object:
 		
 		self.blobj = blob # blobject
 		
-		self.velocity = [0, 0] # 1d array [speed (m/s), direction]
 		self.title = "unassigned"
 		self.ready_flag = False # object will not be considered until true, allows time for classification
 		self.deletion_flag = False
 		self.update_flag = False # true after the object was updated, false after object is estimated. Used to keep track of which objects were seen
 		self.lost_loops = 0
+		
+		self.past_dx = []
+		self.past_dy = []
 	
 	
 	def match(self, blob):
@@ -110,7 +114,7 @@ class dynamic_object:
 		y_delta = blob.pt[1] - self.blobj.pt[1]
 		distance_delta = ((x_delta**2)+(y_delta**2))
 		
-		score += 0.25*distance_delta**2
+		score += 2*(distance_delta**2)
 		score += size_delta # normally we would squareroot for distance but we would square it here so we do neither to save some computation
 		return score
 	
@@ -145,21 +149,28 @@ class dynamic_object:
 		else:
 			self.title = "Noise"
 			self.deletion_flag = True'''
-			
+		avg_dx = 0
+		avg_dy = 0
+		if(len(self.past_dx) > 0):
+			avg_dx = sum(self.past_dx)/len(self.past_dx)
+		if(len(self.past_dy) > 0):
+			avg_dy = sum(self.past_dy)/len(self.past_dy)
+		avg_dist = ((avg_dx**2)+(avg_dy**2))**0.5
+		
 		# basic classifier, does not use velocity only size
 		if(self.blobj.size > 20.0):
 			self.title = "Large Noise"
 			self.deletion_flag = True
 		elif(self.blobj.size > 8.0):
-			if(self.velocity[0] != 0):
+			if(avg_dist != 0):
 				self.title = "vehicle"
 				self.ready_flag = True
 		elif(self.blobj.size >= 4.0):
-			if(self.velocity[0] != 0):
+			if(avg_dist != 0):
 				self.title = "cyclist"
 				self.ready_flag = True
 		elif(self.blobj.size >= 2.0):
-			if(self.velocity[0] != 0):
+			if(avg_dist != 0):
 				self.title = "Pedestrian"
 				self.ready_flag = True
 		else:
@@ -170,25 +181,34 @@ class dynamic_object:
 	
 	def update(self, blob, time_change):
 		# Call this every callback when the object has been detected
+
+		
 		x_displacement = blob.pt[0] - self.blobj.pt[0]
 		y_displacement = blob.pt[1] - self.blobj.pt[1]
-		speed = (((x_displacement)**2+(y_displacement)**2)**0.5)/time_change
-		angle = math.atan2(y_displacement, x_displacement)
-		self.velocity = [speed, angle]
-		self.blobj = blob # We might not need to update size, the reason we do (for now) is if the lidar detects something partially outside view it could get the initial estimate wrong which would throw off future detection
+		
+		self.past_dx.append(x_displacement)
+		self.past_dy.append(y_displacement)
+		while(len(self.past_dx) > _MAX_LEN):
+			self.past_dx.pop(0)
+		while(len(self.past_dy) > _MAX_LEN):
+			self.past_dy.pop(0)
+		
+		#self.velocity = [speed, angle]
+		self.blobj = blob 
 		self.update_flag = True
 		self.lost_loops = 0;
 		
 		
 	def estimate(self, time_change):
 		# Call this every callback when the object is not detected
+		avg_dx = 0
+		avg_dy = 0
+		if(len(self.past_dx) > 0):
+			avg_dx = sum(self.past_dx)/len(self.past_dx)
+		if(len(self.past_dy) > 0):
+			avg_dy = sum(self.past_dy)/len(self.past_dy)
 
-		speed = self.velocity[0]
-		angle = self.velocity[1]
-		
-		dx = speed*math.cos(angle)*time_change
-		dy = speed*math.sin(angle)*time_change
-		self.blobj.move(dx, dy)
+		self.blobj.move(avg_dx, avg_dy)
 		
 		if((self.blobj.pt[0] < 0) or (self.blobj.pt[0] > 350) or (self.blobj.pt[1] < 0) or (self.blobj.pt[1] > 350)):
 			rospy.loginfo(str(self.ID) + " got too far away: " + str(self.blobj.pt[0]) + ", " + str(self.blobj.pt[1]))
