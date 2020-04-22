@@ -25,7 +25,7 @@ READY = False
 PREV_POSITION = [0,0]
 CURRENT_POSITION = [0,0]
 
-_SIZE = 350
+_SIZE = 350 # size of the image
 _RING_MIN = rospy.get_param("/ring_min") # lowest ring that will be scanned
 _RING_MAX = rospy.get_param("/ring_max") # highest ring that will
 _LIDAR_TOPIC = rospy.get_param("/lidar_topic") # lowest ring that will be scanned
@@ -33,7 +33,6 @@ _ODOM_TOPIC = rospy.get_param("/odom_topic") # highest ring that will
 
 
 original_pub = rospy.Publisher('voxel_data/original', Image, queue_size=1)
-thresh_pub = rospy.Publisher('voxel_data/thresh', Image, queue_size=10)
 noise_pub= rospy.Publisher('voxel_data/noise', Image, queue_size=10)
 
 def position_callback(data):
@@ -47,19 +46,6 @@ def position_callback(data):
 		rospy.loginfo("Position update error!")
 
 def callback(data):
-	params = cv2.SimpleBlobDetector_Params()
-	params.filterByArea = True
-	params.minArea = 0
-	params.maxArea = 500
-	params.filterByCircularity = False
-	params.filterByColor = False
-	params.filterByConvexity = False
-	params.filterByInertia = False
-	params.minThreshold = 50
-	params.maxThreshold = 255
-	params.thresholdStep = 10
-	detector = cv2.SimpleBlobDetector_create(params)
-	
 	global PREV_IMG
 	global PREV_POSITION
 	global READY
@@ -67,7 +53,6 @@ def callback(data):
 	bridge = CvBridge()
 	gen = point_cloud2.read_points(data, field_names = ("x", "y", "ring"))
 
-	
 	voxels = np.zeros((_SIZE, _SIZE, _RING_MAX-_RING_MIN+1), dtype=np.uint8)
 	
 	lidar_points = [[] for x in xrange(_RING_MIN, _RING_MAX+1)]
@@ -79,8 +64,6 @@ def callback(data):
 				ring = int(j[2]-_RING_MIN)
 				voxels[x_voxel][y_voxel][ring] = 255
 	
-	
-	#Original order, subtracting the 3d image
 	if READY:
 		
 		y_shift = int((measured_position[0] - PREV_POSITION[0]) * -10)
@@ -106,18 +89,6 @@ def callback(data):
 		image_message = bridge.cv2_to_imgmsg(flat_original, encoding="passthrough")
 		image_message.header.stamp = rospy.Time.now()
 		original_pub.publish(image_message)
-		
-		flat_image = im_2d_filter(flat_image)
-		
-		#keypoints = detector.detect(flat_image)
-		#rospy.loginfo(str(keypoints))
-		
-		#im_with_keypoints = cv2.drawKeypoints(flat_image, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-		
-		image_message = bridge.cv2_to_imgmsg(flat_image, encoding="passthrough")
-		image_message.header.stamp = rospy.Time.now()
-		thresh_pub.publish(image_message)
-		
 		
 		
 	PREV_IMG = voxels
@@ -166,17 +137,8 @@ def im_3d_filter(image):
 		imcopy[pixel[0]][pixel[1]][pixel[2]] = int(adjacent_pixels)
 
 	return imcopy
-	
-def other_im_3d_filter(image):
-	# This one doesn't work when people are partiall obscured
-	imcopy = np.zeros((_SIZE, _SIZE, _RING_MAX-_RING_MIN+1), dtype=np.uint8)
-	
-	super_threshold_indices = (image != 0)
-	imcopy[super_threshold_indices] = 255/(_RING_MAX - _RING_MIN + 1)
-	
-	return imcopy
 		
-		
+# returns the number of adjacent 255 pixles in the image to the provided pixel location
 def check_nearby_pixels(pixel_location, image):
 	i = 0
 	x_lower_bound = pixel_location[0] - 1
