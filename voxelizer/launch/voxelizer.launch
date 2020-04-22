@@ -2,5 +2,5 @@
 
 <launch>
 	<node pkg="voxelizer" type="voxelizer.py" name="voxelizer" output="screen" />
-
+	<rosparam file="$(find voxelizer)/config/voxelizer_params.yaml" />
 </launch>
