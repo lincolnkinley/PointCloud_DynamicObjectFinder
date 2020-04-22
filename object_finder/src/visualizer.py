@@ -11,7 +11,6 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
 
-
 marker_pub = rospy.Publisher("visualized_bounding_boxes", MarkerArray, queue_size=5)
 
 def callback(data):

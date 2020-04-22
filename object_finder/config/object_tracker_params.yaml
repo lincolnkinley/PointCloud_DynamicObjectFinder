@@ -1,0 +1,5 @@
+difference_threshold: 6000
+minimum_size: 1
+maximum_size: 25
+lost_threshold: 30
+tracked_frames: 7

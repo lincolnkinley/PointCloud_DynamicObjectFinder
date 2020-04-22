@@ -9,12 +9,12 @@ import cv2
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 
-_LOST_THRESH = 30 # number of loops before an object is considered lost and will be deleted
-_DIFF_THRESH = 6000 # threshold for considering an object to be a different object
-_MIN_SIZE = 1 # Minimus size, lower than this is considered noise and will be deleted
-_MAX_SIZE = 25 # Max size, higher than this means something went wrong and the object should be ignored
+_LOST_THRESH = rospy.get_param("/lost_threshold") # number of loops before an object is considered lost and will be deleted
+_DIFF_THRESH = rospy.get_param("/difference_threshold") # threshold for considering an object to be a different object
+_MIN_SIZE = rospy.get_param("/minimum_size") # Minimus size, lower than this is considered noise and will be deleted
+_MAX_SIZE = rospy.get_param("/maximum_size") # Max size, higher than this means something went wrong and the object should be ignored
 
-_MAX_LEN = 7
+_MAX_LEN = rospy.get_param("/tracked_frames")
 
 class object_tracker:
 	def __init__(self):

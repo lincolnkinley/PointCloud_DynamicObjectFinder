@@ -31,8 +31,9 @@ SEQ = 0
 ORIGINAL_IMAGE = None
 ORIGINAL_READY = True
 
-_UPPER_Z = 0.5
-_LOWER_Z = -1.5
+_LIDAR_FRAME = rospy.get_param("/lidar_frame")
+_UPPER_Z = rospy.get_param("/upper_z") # lowest ring that will be scanned
+_LOWER_Z = rospy.get_param("/lower_z") # lowest ring that will be scanned
 
 def original_callback(data):
     bridge = CvBridge()
@@ -46,18 +47,11 @@ def original_callback(data):
 	
 	
 def get_bounding_box(blob):
-	y = blob.blobj.x
-	x = blob.blobj.y
-	h = blob.blobj.w
-	w = blob.blobj.h
-	#rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
-	
 	y = float(blob.blobj.x-175)/10
 	x = float(blob.blobj.y-175)/10
 	h = float(blob.blobj.w)/10
 	w = float(blob.blobj.h)/10
 	#rospy.loginfo(str(x) + " | " + str(y) + " | " + str(w) + " | " +str(h))
-	
 	
 	bb = BoundingBox()
 	bb.p1.x = x
@@ -72,6 +66,7 @@ def get_bounding_box(blob):
 	bb.id = int(blob.ID)
 	
 	return bb
+
 
 def get_blobs(contours):
 	blobs = []
@@ -126,27 +121,10 @@ def callback(data):
     OBJ_TRACKER.update(detected_objects, float_time)
     
     color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
-    #color = cv2.drawKeypoints(color, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    
-    # contour detection 
-    '''
-    contours, hierarchy = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    #print(len(contours))
-    #print(contours)
-    
 
-    blobs = get_blobs(contours)
-    
-    OBJ_TRACKER.update(blobs, float_time)
-    '''
     
     tracked_obj = OBJ_TRACKER.tracked_objects()
-    #rospy.loginfo(OBJ_TRACKER.pretty())
     
-    
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    #rospy.loginfo("Objects Detected: " + str(len(keypoints)))
-    #rospy.loginfo("Objects tracked: " + str(len(tracked_obj)))
     box_array = []
     for obj in tracked_obj:
     	bb = get_bounding_box(obj)
@@ -169,16 +147,14 @@ def callback(data):
     ba.header.seq = SEQ
     SEQ += 1
     ba.header.stamp = ros_time
-    ba.header.frame_id = "/vlp16_starboard"
+    ba.header.frame_id = _LIDAR_FRAME
     
     
     image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
     pub_objects_im.publish(image_message)
     pub_objects.publish(ba)
 
-    #rospy.loginfo(OBJ_TRACKER.pretty())
 	
-    #rospy.publish(the blobs and their locations. Might need to make our own ROS message)
     
 # returns a list of dynamic objects detected in the image
 def extract_and_filter(image, original):
