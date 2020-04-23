@@ -7,6 +7,11 @@ This package was designed to work with a Velodyne VLP-16 LiDAR
 
 The maximum range is 17.5 meters. This is the maximum reliable range with a LiDAR that scans at 10 Hz and generates about 1100 points per scan line. Running at a slower rate or with more points per scan line can increase the range
 
+This package is very lightweight and should only use a fraction of a computers processing power 
+
+How it works
+-----------------------------------------------
+
 This package takes user specified rings of a point cloud and voxelizes them
 
 These voxelized point clouds are then subtracted to find the change between two frames
@@ -39,7 +44,7 @@ How to run this software
 ===============================================
 
 I. Running this on a custom robot
-
+-----------------------------------------------
 You will only need the regular requirements. 
 
 You will need to change the configuration files to match your topics
@@ -49,7 +54,7 @@ Run voxelizer.launch and ObjectFinder.launch
 If you want to visualize your data, run visualizer.launch as well
 
 II. Running this on our dataset
-
+-----------------------------------------------
 You will need the regular requirements and our dataset requirements
 
 The configuration files are already set and tuned for our dataset, no need to change them
@@ -65,6 +70,7 @@ Set the Marker Array topic to /visualized_bounding_boxes
 For more information, add an Image and set the topic to /data_image
 
 III. Visualization Information
+-----------------------------------------------
 Blue bounding boxes are pedestrians
 
 Yellow bounding boxes are vehicles
