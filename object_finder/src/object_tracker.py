@@ -1,6 +1,5 @@
 #!/usr/bin/env python2
 
-
 import rospy
 import math
 
@@ -18,7 +17,7 @@ _MAX_LEN = rospy.get_param("/tracked_frames") # number of loops an object will b
 _LARGE_SIZE = rospy.get_param("/large_size") # objects larger than this will be filtered out
 _VEHICLE_SIZE = rospy.get_param("/vehicle_size") # objects larger than this will be classified as a vehicle
 _PEDESTRIAN_SIZE = rospy.get_param("/pedestrian_size") # objects larger than this will be classified as a pedestrian or cyclist depending on speed
-_BICYCLE_SPEED = rospy.get_param("/bicycle_speed")
+_BICYCLE_SPEED = rospy.get_param("/bicycle_speed") # pedestrians above this speed will be classified as cyclists
 
 class object_tracker:
 	def __init__(self):
@@ -32,15 +31,13 @@ class object_tracker:
 		for i in range(len(blobs)):
 			for j in range(len(self.dynamic_objects)):
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
-		#rospy.loginfo(str(cost))
+				
 		row_ind, col_ind = linear_sum_assignment(cost)
-		blobs_copy = np.copy(blobs)
-		# copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
+		blobs_copy = np.copy(blobs) # copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
 
 		for i in range(len(row_ind)):
 			
 			if(cost[row_ind[i]][col_ind[i]] < _DIFF_THRESH):
-				
 				# If the object is less than the _diff_thresh then we condiser it a different object
 				self.dynamic_objects[col_ind[i]].update(blobs[row_ind[i]], time_change)
 				blobs_copy[row_ind[i]] = None
@@ -51,10 +48,6 @@ class object_tracker:
 			else:
 				obj.update_flag = False
 				
-		# remove the Nones, remiaining blobs or objects havent been matched
-		#blobs_copy[blobs_copy != np.array(None)]
-		#rospy.loginfo(str(blobs_copy != np.array(None)))
-		#rospy.loginfo(str(blobs_copy))
 		for blob in blobs_copy:
 			if(blob != None):
 				self.dynamic_objects.append(dynamic_object(self.ID_count, blob))
@@ -62,7 +55,6 @@ class object_tracker:
 		for obj in self.dynamic_objects:
 			obj.estimate_object()
 			
-		
 		i = 0
 		length = len(self.dynamic_objects)
 		while(i < length):
@@ -78,13 +70,15 @@ class object_tracker:
 				rospy.loginfo("Failed to Delete! Index = " + str(i))
 			i += 1
 	
+	# Returns a string with data of all the objects. Useful for debugging
 	def pretty(self):
 		string = ""
 		for obj in self.dynamic_objects:
 			#if(obj.ready_flag == True):
 			string += "Object: " + str(obj.title) + " | X: " + str(obj.pt[0]) + " | Y: " + str(obj.pt[1]) + " | Size: " + str(obj.size) + "\n" 
 		return string
-		
+	
+	# returns all of the ready tracked objects
 	def tracked_objects(self):
 		objects = []
 		for obj in self.dynamic_objects:
@@ -108,6 +102,7 @@ class dynamic_object:
 		self.past_dy = [] # past changes in y direction, ""
 	
 	
+	# claculates a score between this blob and a different blob, higher score means less likely
 	def match(self, blob):
 		score = 0.0
 		size_delta = blob.size - self.blobj.size
@@ -203,7 +198,6 @@ class dynamic_object:
 class blobject:
 	def __init__(self, pt, size, x, y, w, h):
 		# all these values are measured in pixels, but they are floating point!
-		
 		self.pt = pt # this is the center of the blob, used for tracking center 
 		self.size = size # approxamate size of the blob, used to filter small objects
 		

@@ -119,7 +119,7 @@ def im_2d_filter(image):
 	imcopycopy[171:180,171:180] = 0
 	return imcopycopy
 
-
+# custom 3d filter similar to a gaussian filter that works in three dimensions
 def im_3d_filter(image):
 	raw_pixels = np.where(image == 255)
 	imcopy = np.zeros((_SIZE, _SIZE, _RING_MAX-_RING_MIN+1), dtype=np.uint8)
