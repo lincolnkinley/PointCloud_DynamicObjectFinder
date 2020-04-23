@@ -32,7 +32,7 @@ Requirements
 
 This software was developed for ROS Kinetic. Newer versions of ROS should work
 
-Requirements for our Dataset
+Requirements to run our Dataset
 ===============================================
 	1) All of the above requirements
 	2) dbw_mkz_ros (https://bitbucket.org/DataspeedInc/dbw_mkz_ros/src/master/) and its dependencies
@@ -67,7 +67,7 @@ Set the Point Cloud topic to /ns2/velodyne_points
 
 Set the Marker Array topic to /visualized_bounding_boxes
 
-For more information, add an Image and set the topic to /data_image
+For additional information, add an Image and set the topic to /data_image
 
 III. Visualization Information
 -----------------------------------------------
@@ -81,14 +81,13 @@ In the image, green countours are detected static contours, red circles are dete
 
 Current Issues
 ===============================================
-
 The method used here does not tend to work well at detecting vechicles
 
 Low to the ground noisy objects can cause considerable issues (mainly small trees). These are occasionally detected as vehicles and they can prevent detection of pedestrians if they get too close
 
 The tracker will ocasionally detect the same object twice. This tends to happen to tracked objects when a new object appears. This is currently being investigated
-Harmonics play a large role in overall effectiveness. When the LiDAR is traveling at speeds close to multiples of 0.1 meters/sec the results are better. In between values like 0.15 
-meters/sec result in a noisier result
+
+Speed of the LiDAR plays an important role in overall effectiveness. When the LiDAR is traveling at speeds close to multiples of 0.1 meters/sec the results are better. In between values like 0.15 meters/sec result in a noisier result
 
 
 
