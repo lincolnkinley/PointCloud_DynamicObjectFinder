@@ -4,5 +4,6 @@
 	<include file="$(find voxelizer)/launch/voxelizer.launch" />
 	<include file="$(find odom_filter)/launch/odom.launch" />
 	<include file="$(find object_finder)/launch/ObjectFinder.launch" />
+	<include file="$(find object_finder)/launch/visualizer.launch" />
 
 </launch>

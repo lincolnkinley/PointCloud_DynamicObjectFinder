@@ -2,7 +2,6 @@
 
 <launch>
 	<node pkg="object_finder" type="ObjectFinder.py" name="object_finder" output="screen" />
-	<node pkg="object_finder" type="visualizer.py" name="visualizer" output="screen" />
 	<rosparam file="$(find object_finder)/config/object_tracker_params.yaml" />
 	<rosparam file="$(find object_finder)/config/ObjectFinder_params.yaml" />
 </launch>

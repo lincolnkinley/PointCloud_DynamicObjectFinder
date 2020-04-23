@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+
+<launch>
+	<node pkg="object_finder" type="visualizer.py" name="visualizer" output="screen" />
+</launch>
