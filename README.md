@@ -2,14 +2,21 @@ PointCloud_DynamicObjectFinder ROS Package
 ===============================================
 
 ROS package to find and track dynamic obstacles in a point cloud
+
 This package was designed to work with a Velodyne VLP-16 LiDAR
+
 The maximum range is 17.5 meters. This is the maximum reliable range with a LiDAR that scans at 10 Hz and generates about 1100 points per scan line. Running at a slower rate or with more points per scan line can increase the range
 
 This package takes user specified rings of a point cloud and voxelizes them
+
 These voxelized point clouds are then subtracted to find the change between two frames
+
 After filtering, moving objects are extracted from the voxelized data
+
 The package attempts to track the dynamic objects, so unseen objects will still be published
+
 The output is a custom message that includes the bounding boxes and classification of detected objects
+
 The output can be visualized in rviz as well as a MarkerArray
 
 Requirements
@@ -34,33 +41,48 @@ How to run this software
 I. Running this on a custom robot
 
 You will only need the regular requirements. 
+
 You will need to change the configuration files to match your topics
+
 Run voxelizer.launch and ObjectFinder.launch
+
 If you want to visualize your data, run visualizer.launch as well
 
 II. Running this on our dataset
 
 You will need the regular requirements and our dataset requirements
+
 The configuration files are already set and tuned for our dataset, no need to change them
+
 First run all.launch, then run the rosbag
+
 To properly visualize, open rviz and add a Point Cloud and a Marker Array
+
 Set the Point Cloud topic to /ns2/velodyne_points
+
 Set the Marker Array topic to /visualized_bounding_boxes
+
 For more information, add an Image and set the topic to /data_image
 
 III. Visualization Information
 Blue bounding boxes are pedestrians
+
 Yellow bounding boxes are vehicles
+
 Green vounding boxes are cyclists
+
 In the image, green countours are detected static contours, red circles are detected blobs, white spaces are moving objects (these are often covered by the detected blobs), and blue contours are contours considered to be dynamic objects
 
 Current Issues
 ===============================================
 
 The method used here does not tend to work well at detecting vechicles
+
 Low to the ground noisy objects can cause considerable issues (mainly small trees). These are occasionally detected as vehicles and they can prevent detection of pedestrians if they get too close
+
 The tracker will ocasionally detect the same object twice. This tends to happen to tracked objects when a new object appears. This is currently being investigated
-Harmonics play a large role in overall effectiveness. When the LiDAR is traveling at speeds close to multiples of 0.1 meters/sec the results are better. In between values like 0.15 meters/sec result in a noisier result
+Harmonics play a large role in overall effectiveness. When the LiDAR is traveling at speeds close to multiples of 0.1 meters/sec the results are better. In between values like 0.15 
+meters/sec result in a noisier result
 
 
 
