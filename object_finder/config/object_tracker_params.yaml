@@ -1,4 +1,4 @@
-difference_threshold: 6000
+difference_threshold: 900
 minimum_size: 1
 maximum_size: 25
 lost_threshold: 30
@@ -7,4 +7,4 @@ tracked_frames: 7
 large_size: 80.0
 vehicle_size: 49.0
 pedestrian_size: 3.0
-bicycle_speed: 4.1
+bicycle_speed: 3.9

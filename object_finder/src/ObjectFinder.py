@@ -104,12 +104,15 @@ def callback(data):
     PREV_TIME = ros_time
     float_time = time_change.to_sec()
 
+
+    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
+	
+	
     detected_objects = extract_and_filter(image, original)
     
     OBJ_TRACKER.update(detected_objects, float_time)
     
-    color = cv2.cvtColor(image,cv2.COLOR_GRAY2RGB)
-
+    
     tracked_obj = OBJ_TRACKER.tracked_objects()
     
     box_array = []
@@ -157,7 +160,7 @@ def extract_and_filter(image, original):
     
     detected_contours = []
     detected_objects = []
-    
+    bridge = CvBridge()
     for keypoint in keypoints:
         x = keypoint.pt[0] #i is the index of the blob you want to get the position
         y = keypoint.pt[1]
@@ -175,13 +178,13 @@ def extract_and_filter(image, original):
         			
     cv2.drawContours(color, contours, -1, (0,255,0), 1)
     cv2.drawContours(color, detected_contours, -1, (255,0,0), 1)
-    bridge = CvBridge()
-    image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
-    pub_data_image.publish(image_message)
+    
     for contour in detected_contours:
     	x,y,w,h = cv2.boundingRect(contour)
     	detected_objects.append(blobject(blob_position(contour), blob_size(contour), x, y, w, h))
-	    
+	
+    image_message = bridge.cv2_to_imgmsg(color, encoding="passthrough")
+    pub_data_image.publish(image_message)
     return detected_objects
     
 

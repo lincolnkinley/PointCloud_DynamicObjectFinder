@@ -33,7 +33,7 @@ _ODOM_TOPIC = rospy.get_param("/odom_topic") # highest ring that will
 
 
 original_pub = rospy.Publisher('voxel_data/original', Image, queue_size=1)
-noise_pub= rospy.Publisher('voxel_data/noise', Image, queue_size=10)
+noise_pub= rospy.Publisher('voxel_data/noise', Image, queue_size=1)
 
 def position_callback(data):
 	global CURRENT_POSITION

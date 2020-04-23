@@ -33,6 +33,9 @@ class object_tracker:
 				cost[i][j] = self.dynamic_objects[j].match(blobs[i])
 				
 		row_ind, col_ind = linear_sum_assignment(cost)
+		'''rospy.loginfo(str(cost))
+		rospy.loginfo(str(row_ind))
+		rospy.loginfo(str(col_ind))'''
 		blobs_copy = np.copy(blobs) # copy of the blobs and dynamic_objects. We will remove blobs and dynamic_objects from these lists as they are applied
 
 		for i in range(len(row_ind)):
@@ -103,15 +106,18 @@ class dynamic_object:
 	
 	
 	# claculates a score between this blob and a different blob, higher score means less likely
-	def match(self, blob):
+	def match(self, blob, check = False):
 		score = 0.0
-		size_delta = blob.size - self.blobj.size
+		size_delta = abs(blob.size - self.blobj.size)
 		x_delta = blob.pt[0] - self.blobj.pt[0]
 		y_delta = blob.pt[1] - self.blobj.pt[1]
 		distance_delta = ((x_delta**2)+(y_delta**2))
 		
-		score += 0.1*(distance_delta**2)
-		score += size_delta # normally we would squareroot for distance but we would square it here so we do neither to save some computation
+		score += (distance_delta)
+		score += 4*(size_delta**2) # normally we would squareroot for distance but we would square it here so we do neither to save some computation
+
+		'''rospy.loginfo("Match Score: " + str(size_delta) + " | " + str(x_delta) + " | " + str(y_delta) + " | " + str(distance_delta) + " | " + str(score))
+		rospy.loginfo("Compairing " + str(self.ID) + " at " + str(self.blobj.pt) + " to " + str(blob.pt))'''
 		return score
 	
 	
