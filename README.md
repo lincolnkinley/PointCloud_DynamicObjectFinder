@@ -59,7 +59,9 @@ You will need the regular requirements and our dataset requirements
 
 The configuration files are already set and tuned for our dataset, no need to change them
 
-First run all.launch, then run the rosbag
+First run all.launch located in the voxelizer node
+
+Then run the rosbag from the LIDAR_mapping_bicycle_pedestrian_detection dataset
 
 To properly visualize, open rviz and add a Point Cloud and a Marker Array
 
