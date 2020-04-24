@@ -26,9 +26,10 @@ The output can be visualized in rviz as well as a MarkerArray
 
 Requirements
 ===============================================
-	1) ROS Kinetic Desktop Install
+	1) ROS Kinetic Desktop-Full Install
 	2) Python 2.7.x
-	3) OpenCV for Python (pip install opencv-python)
+	3) OpenCV for Python (pip install opencv-python) (OpenCV should come with ROS as well)
+	4) Scipy (sudo apt-get install python-scipy)
 
 This software was developed for ROS Kinetic. Newer versions of ROS should work
 
@@ -36,7 +37,6 @@ Requirements to run our Dataset
 ===============================================
 	1) All of the above requirements
 	2) dbw_mkz_ros (https://bitbucket.org/DataspeedInc/dbw_mkz_ros/src/master/) and its dependencies
-		- ROS Industrial (sudo apt-get install ros-kinetic-industrial-core)
 		- ROS CAN open (sudo apt-get install ros-kinetic-ros-canopen)
 		- ROS Dataspeed CAN (sudo apt-get install ros-kinetic-dataspeed-can)
 
